@@ -53,8 +53,20 @@ export interface Me {
   hearts: number
   inventory: string[]
   tickets: { available: number; requested: number; used: number }
+  attention: { redemptions: number; reversals: number; rules: number; activities: number }
   config: Record<string, unknown>
   serverTime: string
+}
+export interface TicketRule { minimumWeeklyPlannedXP: number; minimumQualifyingDays: number; minimumWeeklyWeightedRatioPercent: number; minimumDailyRatioPercent: number; minimumTrackedInstancesPerQualifyingDay: number; requestExpiresHours: number; reversalWindowHours: number; versionNo: number }
+export interface Redemption { id: string; ticketId: string; ticketWeek?: string; requestedBy: string; partnerId: string; status: 'REQUESTED' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN' | 'EXPIRED' | 'REVERSED'; expiresAt: string; resolvedAt: string | null; reversalRequestedBy: string | null; reversedAt: string | null; createdAt: string }
+export interface WeeklySummary {
+  weekStart: string; weekEnd: string; isCurrent: boolean; rule: TicketRule
+  totals: { plannedXP: number; grossXP: number; netXP: number; penaltyXP: number; activeDays: number; excusedDays: number; qualifyingDays: number; finalizedDays: number; days: number }
+  days: Summary[]
+  categories: Array<{ category: string; plannedXP: number; grossXP: number; completed: number; tracked: number }>
+  goals: Array<{ name: string; daysDone: number; daysTracked: number; grossXP: number; plannedXP: number }>
+  result: null | { plannedXP: number; grossXP: number; qualifyingDays: number; eligible: boolean; ruleVersion: number; finalizedAt: string }
+  ticket: null | { id: string; status: string }
 }
 export interface AvatarConfig { type?: 'lady' | 'gent'; skin?: number; hair?: number; hairColor?: number; outfit?: string }
 export interface TodayData {
@@ -103,11 +115,15 @@ export interface RewardsData {
   plannedXP: number
   grossXP: number
   qualifyingDays: number
-  rule: { minimumWeeklyPlannedXP: number; minimumQualifyingDays: number; minimumWeeklyWeightedRatioPercent: number; minimumDailyRatioPercent: number; minimumTrackedInstancesPerQualifyingDay: number }
+  serverTime: string
+  rule: TicketRule
+  nextWeekRule: TicketRule
+  pendingRule: null | { id: string; rule: Partial<TicketRule>; proposedBy: string; createdAt: string }
   finalizesAt: string
   hearts: number
-  tickets: Array<{ id: string; week: string; status: string; createdAt: string }>
-  redemptions: Array<{ id: string; ticketId: string; requestedBy: string; partnerId: string; status: string; expiresAt: string; resolvedAt: string | null; reversedAt: string | null; createdAt: string }>
+  tickets: Array<{ id: string; week: string; status: 'AVAILABLE' | 'REQUESTED' | 'USED' | 'ARCHIVED'; createdAt: string }>
+  partnerTickets: null | { available: number; used: number }
+  redemptions: Redemption[]
   lastWeek: null | { weekStart: string; plannedXP: number; grossXP: number; qualifyingDays: number; eligible: boolean }
   catalog: Array<{ id: string; kind: string; name: string; slot: string; requiredLevel: number; requiredGardenLevel: number; price: number; assetKey: string }>
   inventory: string[]
@@ -159,6 +175,11 @@ export const ERROR_TEXT: Record<string, string> = {
   INVALID_STATE: 'Bu işlem şu anki durumda yapılamaz.',
   NOT_ACCEPTED_YET: 'Partnerin henüz kabul etmedi.',
   FORBIDDEN: 'Bu işlem için yetkin yok.',
+  REVERSAL_WINDOW_CLOSED: 'Geri alma süresi (24 saat) doldu.',
+  RULE_RANGE_PLANNED: 'Haftalık plan eşiği 100–1400 arasında olmalı.',
+  RULE_RANGE_DAYS: 'Uygun gün sayısı 1–7 arasında olmalı.',
+  RULE_RANGE_DAILY: 'Günlük oran %1–100 arasında olmalı.',
+  RULE_RANGE_WEEKLY: 'Haftalık oran %1–100 arasında olmalı.',
   NETWORK: 'Bağlantı kurulamadı. İnternetini kontrol et.',
 }
 export const errorText = (e: unknown): string => {
@@ -252,6 +273,14 @@ export const proposeActivity = (type: string, title: string, date: string, time:
 export const respondActivity = (id: string, action: 'accept' | 'later' | 'cancel') => rpc<{ id: string; status: string }>('respond_activity', { p_id: id, p_action: action })
 export const confirmActivity = (id: string) => rpc<{ id: string; status: string; confirmations: number }>('confirm_activity', { p_id: id })
 export const hideActivity = (id: string) => rpc<void>('hide_activity', { p_id: id })
+
+// ---------- Aşama 3 ----------
+export const requestTicket = (ticketId: string) => rpc<Redemption>('request_ticket', { p_ticket_id: ticketId, p_operation_id: crypto.randomUUID() })
+export const respondRedemption = (id: string, action: 'approve' | 'not_now' | 'withdraw') => rpc<Redemption>('respond_redemption', { p_id: id, p_action: action })
+export const requestReversal = (id: string) => rpc<Redemption>('request_reversal', { p_id: id })
+export const proposeRule = (rule: Pick<TicketRule, 'minimumWeeklyPlannedXP' | 'minimumQualifyingDays' | 'minimumDailyRatioPercent' | 'minimumWeeklyWeightedRatioPercent'>) => rpc<{ id: string }>('propose_rule', { p_rule: rule })
+export const respondRule = (id: string, action: 'approve' | 'reject' | 'withdraw') => rpc<{ id: string; status: string }>('respond_rule', { p_id: id, p_action: action })
+export const getWeeklySummary = (weekStart?: string) => rpc<WeeklySummary>('get_weekly_summary', { p_week_start: weekStart ?? null })
 
 // Kurulumdaki görev listesi (doğrudan tablo okuması; RLS yalnızca kendi satırlarını verir)
 export interface GoalRow { id: string; code: string; name: string; description: string; icon: string; category: string; input_type: InputType; target: number; unit: string; weekdays: number[]; max_xp: number; items: string[]; active: boolean; sort_order: number; group_key: string | null }

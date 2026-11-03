@@ -88,8 +88,9 @@ export function App() {
     <Shell>
       <header className="flex items-center justify-between px-4 pt-[calc(8px+env(safe-area-inset-top))] pb-2">
         <h1 className="text-lg font-bold">{APP_NAME}</h1>
-        <button className="tap rounded-full bg-soft text-primary font-bold" aria-label="Ayarlar ve profil" onClick={() => setSettingsOpen(true)}>
+        <button className="tap relative rounded-full bg-soft text-primary font-bold" aria-label="Ayarlar ve profil" onClick={() => setSettingsOpen(true)}>
           {me.displayName.slice(0, 1).toUpperCase()}
+          {(me.attention?.rules ?? 0) > 0 && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-warn" aria-label="Bekleyen kural önerisi" />}
         </button>
       </header>
       {needRefresh && (
@@ -106,18 +107,23 @@ export function App() {
       </main>
       <nav aria-label="Ana menü" className="fixed bottom-0 left-0 right-0 bg-card border-t border-line">
         <ul className="mx-auto max-w-[520px] grid grid-cols-4 pb-[env(safe-area-inset-bottom)]">
-          {TABS.map(t => (
-            <li key={t.id}>
-              <button
-                className={`w-full min-h-[56px] flex flex-col items-center justify-center text-[13px] font-semibold ${tab === t.id ? 'text-primary' : 'text-ink-2'}`}
-                aria-current={tab === t.id ? 'page' : undefined}
-                onClick={() => setTab(t.id)}
-              >
-                <span aria-hidden="true" className="text-xl leading-none mb-0.5">{t.icon}</span>
-                {t.label}
-              </button>
-            </li>
-          ))}
+          {TABS.map(t => {
+            const a = me.attention ?? { redemptions: 0, reversals: 0, rules: 0, activities: 0 }
+            const pending = t.id === 'rewards' ? a.redemptions + a.reversals : t.id === 'us' ? a.activities : 0
+            return (
+              <li key={t.id}>
+                <button
+                  className={`relative w-full min-h-[56px] flex flex-col items-center justify-center text-[13px] font-semibold ${tab === t.id ? 'text-primary' : 'text-ink-2'}`}
+                  aria-current={tab === t.id ? 'page' : undefined}
+                  onClick={() => setTab(t.id)}
+                >
+                  <span aria-hidden="true" className="text-xl leading-none mb-0.5">{t.icon}</span>
+                  {t.label}
+                  {pending > 0 && <span className="absolute top-2 right-[22%] w-2.5 h-2.5 rounded-full bg-warn" aria-label={`${pending} bekleyen`} />}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </nav>
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} me={me} onChange={reloadMe} />

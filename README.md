@@ -31,9 +31,16 @@
 - Ortak etkinlikler (§12): öner → kabul / başka zaman / vazgeç → iki ayrı “Yaptık” beyanı → COMPLETED; haftanın ilk tamamlanan etkinliğinde kişi başına 5 kalp (`activity:<user>:<hafta>` tekillik anahtarı); 48 saatte ikinci onay gelmezse cron UNCONFIRMED yapar; tamamlanan etkinlik değiştirilemez, gizlenebilir.
 - Sunucu testleri (gerçek DB, geri alınarak): iki onay → tamamlandı ve 5'er kalp; haftanın ikinci etkinliğinde kalp yok; tekrar onay, tekrar satın alma, kilitli ürün, bahçe kilidi, yetersiz kalp, günlük beceri sınırı hataları.
 
+**Tamamlanan (Aşama 3, "en değerli ödül")** — `supabase/migrations/0003_phase3.sql`
+
+- Bilet kullanım akışı (§10.3): AVAILABLE → REQUESTED (bilet satır kilidi, aktif istek tekilliği kısmi unique index) → partner “Onayla” (USED) / “Şimdi değil” (AVAILABLE) / sahibi “Vazgeç”; 72 saat yanıtsız istek cron ile AVAILABLE; tekrar onay ikinci tüketim üretmez (mevcut durum döner). Kullanım sonrası 24 saat içinde iki tarafın onayıyla bir kez geri alma (`request_reversal` istek-ve-onay); pencere kapanınca `REVERSAL_WINDOW_CLOSED`.
+- Çift kural önerileri (§10.1): aralık doğrulama (100–1400 / 1–7 / %1–100 / %1–100), çift başına tek açık öneri (yenisi eskisini düşürür), öneren onaylayamaz, onay sonrası **gelecek Pazartesi** yürürlük, sürüm numarası; haftalık değerlendirme o haftaya etkin sürümü kullanır (`bb_rule_for_week`), geçmiş haftalar yeniden değerlendirilmez. Haftada en fazla 1 bilet ve karşılıklı onay değiştirilemez.
+- Haftalık özet (§14.7): kategori ve görev bazlı olgusal cümleler, uygun gün, bilet sonucu; partnerle kıyas yok. Bu hafta / geçen hafta görünümü.
+- Bekleyen iş noktaları: Ödüller (onay bekleyen istek, geri alma), Biz (etkinlik), profil düğmesi (kural önerisi).
+- Sunucu testleri (gerçek DB, geri alınarak): §27 no. 29, 30, 31, 32, 33 (+24 saat kapalı pencere), partnerin başkasının biletini isteyememesi, kural önerisi aralık/teklik/yetki/yürürlük.
+
 **Henüz yapılmayan (dürüst liste)**
 
-- Aşama 3: bilet kullanım isteği / partner onayı / 72 saat / geri alma; çift kural önerileri. Tablolar hazır, akış yok. Bilet **kazanma** çalışıyor.
 - Aşama 4: çevrimdışı IndexedDB kuyruğu, Web Push, kurtarma kodları, cihaz oturumları listesi, dışa aktarma, hesap silme, çift bağlantısını kesme, plan düzenleme (gelecek Pazartesi), beslenme cezasını açma arayüzü, haftalık özet ekranı.
 - Gerçek telefon testi (Android/iPhone kurulum) yapılmadı; yalnızca masaüstü tarayıcıda 375 px emülasyon.
 - Görseller: tüm karakter, sahne, dekor ve ikonlar **geçici** (SVG/emoji yer tutucu). Katman sırası ve pivot kuralı `src/components/Avatar.tsx` içinde korunur; nihai sanat aynı yuvalara oturur.
