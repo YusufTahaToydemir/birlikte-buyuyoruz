@@ -26,6 +26,8 @@ export interface Instance {
   note: string | null
   revision: number
   snapshot: Snapshot
+  /** Yalnızca istemcide: çevrimdışı kuyrukta bekleyen, sunucu onayı olmayan kayıt */
+  pending?: boolean
 }
 export interface Summary {
   id: string
@@ -180,6 +182,12 @@ export const ERROR_TEXT: Record<string, string> = {
   RULE_RANGE_DAYS: 'Uygun gün sayısı 1–7 arasında olmalı.',
   RULE_RANGE_DAILY: 'Günlük oran %1–100 arasında olmalı.',
   RULE_RANGE_WEEKLY: 'Haftalık oran %1–100 arasında olmalı.',
+  GOAL_XP_RANGE: 'Şablon başına XP 1–20 arasında olmalı.',
+  CHECKLIST_EMPTY: 'Kontrol listesi boşken görev aktif olamaz.',
+  INVALID_RECOVERY: 'Kullanıcı adı veya kurtarma kodu hatalı.',
+  RATE_LIMITED: 'Çok fazla deneme. 15 dakika sonra tekrar dene.',
+  PASSWORD_LENGTH: 'Şifre 15–128 karakter olmalı.',
+  COUPLE_DISCONNECTED: 'Bu çift alanı kapandı.',
   NETWORK: 'Bağlantı kurulamadı. İnternetini kontrol et.',
 }
 export const errorText = (e: unknown): string => {
@@ -222,6 +230,8 @@ export async function signUp(username: string, password: string, displayName: st
 
 export async function signOut() {
   await supabase.auth.signOut()
+  // Çıkışta çevrimdışı kuyruk, önbellek ve uygulama durumu temizlenir (Şartname §22)
+  try { const { queue } = await import('./offline'); await queue.clear() } catch { /* yok say */ }
   try { localStorage.clear(); sessionStorage.clear() } catch { /* yok say */ }
   if ('caches' in window) { try { const keys = await caches.keys(); await Promise.all(keys.filter(k => k.includes('api')).map(k => caches.delete(k))) } catch { /* yok say */ } }
 }
@@ -281,6 +291,40 @@ export const requestReversal = (id: string) => rpc<Redemption>('request_reversal
 export const proposeRule = (rule: Pick<TicketRule, 'minimumWeeklyPlannedXP' | 'minimumQualifyingDays' | 'minimumDailyRatioPercent' | 'minimumWeeklyWeightedRatioPercent'>) => rpc<{ id: string }>('propose_rule', { p_rule: rule })
 export const respondRule = (id: string, action: 'approve' | 'reject' | 'withdraw') => rpc<{ id: string; status: string }>('respond_rule', { p_id: id, p_action: action })
 export const getWeeklySummary = (weekStart?: string) => rpc<WeeklySummary>('get_weekly_summary', { p_week_start: weekStart ?? null })
+
+// ---------- Aşama 4 ----------
+export interface PlanGoal { id: string; code: string; groupKey: string | null; name: string; description: string; icon: string; category: 'START' | 'WORSHIP' | 'LEARNING' | 'BODY'; inputType: InputType; target: number; unit: string; weekdays: number[]; maxXP: number; items: string[]; active: boolean; sortOrder: number }
+export interface PlanVersion { id: string; effectiveWeekStart: string; penaltyEnabled: boolean; goals: PlanGoal[] }
+export interface PlanData { today: string; weekStart: string; nextWeekStart: string; current: PlanVersion; next: PlanVersion | null; pauses: Array<{ stableGoalId: string; fromDate: string; toDate: string }>; limits: { maxGoalXP: number; maxDailyPlannedXP: number; maxActiveGoals: number } }
+export const getPlan = () => rpc<PlanData>('get_plan')
+export const saveNextWeekPlan = (penaltyEnabled: boolean, goals: Array<Partial<PlanGoal>>) => rpc<PlanData>('save_next_week_plan', { p_penalty_enabled: penaltyEnabled, p_goals: goals })
+export const renameGoal = (id: string, name: string, description?: string, icon?: string) => rpc<PlanData>('rename_goal', { p_stable_goal_id: id, p_name: name, p_description: description ?? null, p_icon: icon ?? null })
+export const pauseGoal = (id: string) => rpc<PlanData>('pause_goal', { p_stable_goal_id: id })
+export const unpauseGoal = (id: string) => rpc<PlanData>('unpause_goal', { p_stable_goal_id: id })
+export const generateRecoveryCodes = () => rpc<{ codes: string[]; createdAt: string }>('generate_recovery_codes')
+export const recoveryCodesStatus = () => rpc<{ unused: number; used: number; createdAt: string | null }>('recovery_codes_status')
+export async function recoverWithCode(username: string, code: string, newPassword: string) {
+  const r = await rpc<{ ok: boolean; error?: string }>('recover_with_code', { p_username: username, p_code: code, p_new_password: newPassword })
+  if (!r.ok) throw new ApiError(r.error ?? 'INVALID_RECOVERY')
+}
+export interface DeviceSession { id: string; createdAt: string; lastUsedAt: string; userAgent: string; current: boolean }
+export const listSessions = () => rpc<DeviceSession[]>('list_sessions')
+export const revokeSession = (id: string) => rpc<void>('revoke_session', { p_id: id })
+export const revokeOtherSessions = () => rpc<void>('revoke_other_sessions')
+export const exportMyData = (includeNotes: boolean) => rpc<Record<string, unknown>>('export_my_data', { p_include_notes: includeNotes })
+export const disconnectCouple = () => rpc<Me>('disconnect_couple')
+export const deleteAccount = () => rpc<{ ok: boolean }>('delete_account')
+
+/** Yeniden kimlik doğrulama: mevcut şifreyle giriş (export, ayrılma, silme öncesi). */
+export const reauthenticate = (username: string, password: string) => signIn(username, password)
+
+/** CSV formül enjeksiyonuna karşı güvenli hücre. */
+export function csvCell(v: unknown): string {
+  let s = v === null || v === undefined ? '' : String(v)
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
+  if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"'
+  return s
+}
 
 // Kurulumdaki görev listesi (doğrudan tablo okuması; RLS yalnızca kendi satırlarını verir)
 export interface GoalRow { id: string; code: string; name: string; description: string; icon: string; category: string; input_type: InputType; target: number; unit: string; weekdays: number[]; max_xp: number; items: string[]; active: boolean; sort_order: number; group_key: string | null }

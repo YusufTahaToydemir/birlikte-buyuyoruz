@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { errorText, signIn, signUp } from '../lib/api'
+import { errorText, recoverWithCode, signIn, signUp } from '../lib/api'
 import { Button, Card, Field } from '../components/ui'
 import { APP_NAME } from '../App'
 
-type Mode = 'login' | 'setup' | 'invite'
+type Mode = 'login' | 'setup' | 'invite' | 'recover'
 
 const USERNAME_RE = /^[a-z0-9_]{3,24}$/
 
@@ -26,7 +26,8 @@ export function Auth({ hash }: { hash: string }) {
         <h1 className="text-2xl font-bold">{APP_NAME}</h1>
         <p className="text-ink-2">Günlük gayretimiz karakterlerimizi geliştirir; birbirimize gösterdiğimiz özen ortak yuvamızı güzelleştirir.</p>
       </div>
-      {mode === 'login' && <LoginForm />}
+      {mode === 'login' && <LoginForm onRecover={() => setMode('recover')} />}
+      {mode === 'recover' && <RecoverForm onCancel={() => setMode('login')} />}
       {mode === 'setup' && <SignupForm kind="setup" secret={parsed.secret ?? ''} onCancel={() => { window.location.hash = ''; setMode('login') }} />}
       {mode === 'invite' && <SignupForm kind="invite" secret={parsed.secret ?? ''} onCancel={() => { window.location.hash = ''; setMode('login') }} />}
       <p className="text-[13px] text-ink-2 text-center">Uygulama kendi beyanlarımızı kaydeder. Biletlerimizin karşılığını aramızda belirleriz.</p>
@@ -34,7 +35,47 @@ export function Auth({ hash }: { hash: string }) {
   )
 }
 
-function LoginForm() {
+function RecoverForm({ onCancel }: { onCancel: () => void }) {
+  const [username, setUsername] = useState('')
+  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [password2, setPassword2] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+  const pErr = password && (password.length < 15 || password.length > 128) ? 'Şifre 15–128 karakter olmalı.' : null
+  const p2Err = password2 && password2 !== password ? 'Şifreler aynı değil.' : null
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pErr || p2Err) return
+    setBusy(true); setError(null)
+    try { await recoverWithCode(username, code, password); setDone(true) } catch (err) { setError(errorText(err)) } finally { setBusy(false) }
+  }
+  if (done) return (
+    <Card className="space-y-3">
+      <h2 className="text-lg font-bold">Şifre yenilendi</h2>
+      <p className="text-[15px]">Kullanılan kurtarma kodu geçersiz oldu ve tüm cihaz oturumların kapatıldı. Yeni şifrenle giriş yapabilirsin.</p>
+      <Button className="w-full" onClick={onCancel}>Giriş yap</Button>
+    </Card>
+  )
+  return (
+    <Card>
+      <h2 className="text-lg font-bold mb-1">Kurtarma koduyla eriş</h2>
+      <p className="text-ink-2 text-[15px] mb-4">Ayarlar’da ürettiğin tek kullanımlık kodlardan birini gir. 15 dakikada en çok 5 deneme yapılabilir.</p>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Kullanıcı adı"><input className="input" autoComplete="username" autoCapitalize="none" value={username} onChange={e => setUsername(e.target.value)} required /></Field>
+        <Field label="Kurtarma kodu" hint="Örnek biçim: ABCD-EFGH"><input className="input font-mono" autoCapitalize="characters" value={code} onChange={e => setCode(e.target.value.toUpperCase())} required /></Field>
+        <Field label="Yeni şifre" error={pErr} hint="En az 15 karakter."><input className="input" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
+        <Field label="Yeni şifre (tekrar)" error={p2Err}><input className="input" type="password" autoComplete="new-password" value={password2} onChange={e => setPassword2(e.target.value)} required /></Field>
+        {error && <p className="text-warn" role="alert">{error}</p>}
+        <Button type="submit" className="w-full" disabled={busy || !!pErr || !!p2Err}>{busy ? 'Yenileniyor…' : 'Şifreyi yenile'}</Button>
+        <Button type="button" variant="ghost" className="w-full" onClick={onCancel}>Geri</Button>
+      </form>
+    </Card>
+  )
+}
+
+function LoginForm({ onRecover }: { onRecover: () => void }) {
   const [username, setUsername] = useState(() => { try { return localStorage.getItem('bb:lastUsername') ?? '' } catch { return '' } })
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
@@ -71,7 +112,7 @@ function LoginForm() {
         </label>
         {error && <p className="text-warn" role="alert">{error}</p>}
         <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Giriş yapılıyor…' : 'Giriş yap'}</Button>
-        <p className="text-[13px] text-ink-2">Şifreni unuttuysan kurtarma kodu akışı bir sonraki sürümde eklenecek; şimdilik kurulumu yapan kişi sunucu üzerinden sıfırlayabilir.</p>
+        <Button type="button" variant="ghost" className="w-full" onClick={onRecover}>Kurtarma koduyla eriş</Button>
       </form>
     </Card>
   )

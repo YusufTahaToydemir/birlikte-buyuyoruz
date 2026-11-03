@@ -39,11 +39,25 @@
 - Bekleyen iş noktaları: Ödüller (onay bekleyen istek, geri alma), Biz (etkinlik), profil düğmesi (kural önerisi).
 - Sunucu testleri (gerçek DB, geri alınarak): §27 no. 29, 30, 31, 32, 33 (+24 saat kapalı pencere), partnerin başkasının biletini isteyememesi, kural önerisi aralık/teklik/yetki/yürürlük.
 
+**Tamamlanan (Aşama 4, "telefonda güvenilir kullanım")** — `supabase/migrations/0004_phase4.sql`, `src/lib/offline.ts`
+
+- Çevrimdışı kayıt kuyruğu (§22): IndexedDB; görev değerleri kuyruğa yazılır, özel notlar alınmaz; satırda “cihazda kaydedildi · gönderilmeyi bekliyor”, XP önizlemesi `*` ile ayrılır. Aynı görevin bekleyen düzenlemeleri son değere birleşir, gönderimi başlamış olan değiştirilmez (birim testli). Bağlantı gelince sırayla gönderim; `DAY_LOCKED` → “süre dolduğu için gönderilemedi” kutusu (geçmişe yazılmaz); `REVISION_CONFLICT` → sunucudaki/cihazdaki değer karşılaştırması ve seçim. Son senkronize Bugün kopyası çevrimdışı gösterilir. Çıkışta kuyruk ve önbellek silinir; bekleyen kayıt varsa uyarı.
+- Plan düzenleme (§5): hedef/XP/gün/tür/kontrol listesi/ceza değişiklikleri **gelecek Pazartesi** sürümü olarak kaydedilir (`save_next_week_plan`), aktif hafta değişmez; sınırlar (20 görev, günde 200 XP, şablon 1–20 XP) sessizce kırpılmaz, hangi sınırın aşıldığı söylenir; ad/açıklama/ikon hemen (`rename_goal`); görev bırakma bugünden Pazar’a kadar takip dışı (`pause_goal`, kalan günler EXCUSED üretilir, geçmiş kopyalar silinmez); yeni özel görev eklenir.
+- Kurtarma kodları (§24): 8 tek kullanımlık kod, yalnızca bir kez gösterilir, hash saklanır; oturumsuz `recover_with_code`: kullanıcı adı+kod, 15 dakikada 5 deneme (başarısız deneme kalıcı kaydedilir), kullanıcı varlığını açığa çıkarmaz, şifre 15–128, tüm oturumları kapatır.
+- Cihaz oturumları: listeleme, tekil kapatma, “diğer tüm oturumları kapat”; şifre değişiminde diğer oturumlar kapanır.
+- Dışa aktarma (§25): JSON ve CSV, yeniden şifre doğrulamasıyla; notlar yalnızca istenirse; partner verisi yok; CSV formül enjeksiyonu koruması.
+- Çift bağlantısını kesme (§25): bekleyen bilet istekleri iptal, kalan biletler arşiv (`ARCHIVED`), ortak öneriler kapanır, ayrılan kişi tek kişilik alanında devam eder; partnerin verisi silinmez.
+- Hesap silme (§25): yeniden doğrulama + “SİL” onayı; kişisel veriler cascade ile silinir, ortak metinsiz kayıtlarda (etkinlik, dekor, kural) kimlik NULL olur.
+- Sunucu testleri (gerçek DB, geri alınarak): plan sınırları (günlük 200, şablon XP), değişikliğin gelecek haftaya etkisi (no. 44), görev bırakma, kurtarma (8 kod, aynı hata, kısa şifre, tek kullanım, hız sınırı), export kapsamı, ayrılma, hesap silme (no. 49).
+
 **Henüz yapılmayan (dürüst liste)**
 
-- Aşama 4: çevrimdışı IndexedDB kuyruğu, Web Push, kurtarma kodları, cihaz oturumları listesi, dışa aktarma, hesap silme, çift bağlantısını kesme, plan düzenleme (gelecek Pazartesi), beslenme cezasını açma arayüzü, haftalık özet ekranı.
-- Gerçek telefon testi (Android/iPhone kurulum) yapılmadı; yalnızca masaüstü tarayıcıda 375 px emülasyon.
+- **Web Push** (§23): VAPID anahtarı ve gönderim için sunucu tarafı (Supabase Edge Function + pg_net) gerekir; bu dağıtım CLI erişim token’ı ister ve kurulmadı. Bildirim tercihleri arayüzü bu yüzden eklenmedi; bildirimler kapalı, uygulama bunu açıkça söyler.
+- **Gerçek telefon testi** (Android/iPhone kurulum, Web Push, arka plan davranışı) yapılmadı; yalnızca masaüstü tarayıcıda 375 px emülasyon ve fetch engelleyerek çevrimdışı simülasyonu.
+- Yedekleme: ücretsiz planda otomatik yedek yok (bkz. aşağı).
+- Plan sürümü değişikliklerinde hatırlatma ayarı (§5 “hatırlatma”) Web Push’a bağlı olduğundan yok.
 - Görseller: tüm karakter, sahne, dekor ve ikonlar **geçici** (SVG/emoji yer tutucu). Katman sırası ve pivot kuralı `src/components/Avatar.tsx` içinde korunur; nihai sanat aynı yuvalara oturur.
+- Çift kural önerisi ve plan düzenleme dışında kalan “sonraki sürüm” notları: saat dilimi değiştirme, yeni çiftle birleştirme, zamanlayıcı, namaz vakti bildirimi (şartnamede ilk sürüm dışı).
 
 ## Şartnameden bilinçli sapmalar (teknik, README'de belirtilmesi istenen)
 

@@ -47,6 +47,7 @@ export function App() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  const [settingsVersion, setSettingsVersion] = useState(0)
   const reloadMe = useCallback(async () => {
     try {
       setMeError(null)
@@ -100,7 +101,7 @@ export function App() {
         </div>
       )}
       <main className="px-4 pb-[calc(84px+env(safe-area-inset-bottom))]">
-        {tab === 'today' && <Today me={me} onTotalsChange={reloadMe} />}
+        {tab === 'today' && <Today key={settingsVersion} me={me} onTotalsChange={reloadMe} />}
         {tab === 'us' && <Us me={me} onChange={reloadMe} />}
         {tab === 'me' && <Character me={me} onChange={reloadMe} />}
         {tab === 'rewards' && <Rewards me={me} onChange={reloadMe} />}
@@ -126,7 +127,7 @@ export function App() {
           })}
         </ul>
       </nav>
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} me={me} onChange={reloadMe} />
+      <Settings open={settingsOpen} onClose={() => { setSettingsOpen(false); setSettingsVersion(v => v + 1) }} me={me} onChange={reloadMe} />
     </Shell>
   )
 }
