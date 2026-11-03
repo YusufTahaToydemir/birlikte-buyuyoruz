@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@import "@fontsource/nunito-sans/400.css";
+@import "@fontsource/nunito-sans/600.css";
+@import "@fontsource/nunito-sans/700.css";
+
+@theme {
+  --color-bg: #FFF9F2;
+  --color-card: #FFFFFF;
+  --color-ink: #352C3A;
+  --color-ink-2: #6B6070;
+  --color-primary: #815266;
+  --color-soft: #F6E6EC;
+  --color-success: #326B50;
+  --color-success-bg: #EAF4EC;
+  --color-ticket: #E8BB60;
+  --color-line: #E8DDE3;
+  --color-warn: #9A492F;
+  --font-sans: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-card: 20px;
+  --radius-btn: 14px;
+}
+
+html { background: var(--color-bg); }
+body {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: 3px solid #815266; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+.card { background: var(--color-card); border: 1px solid var(--color-line); border-radius: var(--radius-card); }
+.btn { min-height: 48px; padding: 0 20px; border-radius: var(--radius-btn); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:disabled { opacity: .5; }
+.btn-soft { background: var(--color-soft); color: var(--color-primary); }
+.btn-ghost { background: transparent; color: var(--color-primary); }
+.input { min-height: 48px; width: 100%; border: 1px solid var(--color-line); border-radius: 14px; padding: 0 14px; background: #fff; color: var(--color-ink); }
+.input:focus { border-color: var(--color-primary); }
+.tap { min-width: 44px; min-height: 44px; }
+
+@keyframes breathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.01); } }
+@keyframes sparkle { 0% { opacity: 0; transform: scale(.6); } 40% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.3); } }
+@keyframes pop { 0% { transform: scale(.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.anim-breathe { animation: breathe 4s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-sparkle { animation: sparkle .7s ease-out forwards; }
+.anim-pop { animation: pop .25s ease-out; }
