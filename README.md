@@ -22,9 +22,17 @@
 - PWA: manifest, ikonlar (geçici), service worker yalnızca statik kabuğu önbellekler; API yanıtları önbelleğe alınmaz. "Güncelleme hazır" uyarısı.
 - Testler: 14 birim testi (XP/seviye/yüzde), 14 sunucu senaryosu (`supabase/tests/server_rules.sql`, §27: 2,3,4,5,7,11,12,14,16,17,18,36,39,45) gerçek veritabanında geçti; test geri alınarak çalışır.
 
+**Tamamlanan (Aşama 2, "oyun hissi")** — `supabase/migrations/0002_phase2.sql`
+
+- Romantik beceriler (§11): seviyeyle açılır; beceri başına günde 1, toplam 3 (sunucuda sayılır); Kalpten Not 280 karakter, HTML etiketleri temizlenir; Piknik Daveti ortak etkinlik önerisi oluşturur. Alıcı tarafında “Sana gelenler”, sahnede çiçek.
+- Kalple satın alma (§9): cüzdan satır kilidi, DB tekilliği, idempotency; ortak dekor çift başına bir kez (eşzamanlı ikinci istek ücret ödemeden “Zaten edinilmiş”); seviye ve bahçe seviyesi kontrolü sunucuda. Onay ekranı; geri alınmaz.
+- Giydirme: kıyafet/baş/el/efekt yuvaları; sahiplik ve seviye kontrolü sunucuda; seviye düşerse takılı kıyafet başlangıca döner (`bb_effective_equipped`). “Dene” kalıcı değildir.
+- Dekor sahneye yerleştirme/kaldırma (iki tarafça), anı defterine düşer.
+- Ortak etkinlikler (§12): öner → kabul / başka zaman / vazgeç → iki ayrı “Yaptık” beyanı → COMPLETED; haftanın ilk tamamlanan etkinliğinde kişi başına 5 kalp (`activity:<user>:<hafta>` tekillik anahtarı); 48 saatte ikinci onay gelmezse cron UNCONFIRMED yapar; tamamlanan etkinlik değiştirilemez, gizlenebilir.
+- Sunucu testleri (gerçek DB, geri alınarak): iki onay → tamamlandı ve 5'er kalp; haftanın ikinci etkinliğinde kalp yok; tekrar onay, tekrar satın alma, kilitli ürün, bahçe kilidi, yetersiz kalp, günlük beceri sınırı hataları.
+
 **Henüz yapılmayan (dürüst liste)**
 
-- Aşama 2: romantik beceri gönderme, kalple satın alma (aksesuar/dekor), ortak etkinlik öner/onayla, dekor yerleştirme. Tablolar ve katalog hazır; RPC'ler ve arayüz yok.
 - Aşama 3: bilet kullanım isteği / partner onayı / 72 saat / geri alma; çift kural önerileri. Tablolar hazır, akış yok. Bilet **kazanma** çalışıyor.
 - Aşama 4: çevrimdışı IndexedDB kuyruğu, Web Push, kurtarma kodları, cihaz oturumları listesi, dışa aktarma, hesap silme, çift bağlantısını kesme, plan düzenleme (gelecek Pazartesi), beslenme cezasını açma arayüzü, haftalık özet ekranı.
 - Gerçek telefon testi (Android/iPhone kurulum) yapılmadı; yalnızca masaüstü tarayıcıda 375 px emülasyon.
@@ -45,7 +53,7 @@ Bilinen denetim notu: `npm audit` yalnızca derleme zamanı araçlarında (workb
 
 ## Kurulum
 
-1. Supabase projesi aç; `supabase/migrations/0001_schema.sql` dosyasını SQL Editor'de çalıştır (idempotent).
+1. Supabase projesi aç; `supabase/migrations/` altındaki dosyaları sırayla SQL Editor'de çalıştır (idempotent).
 2. Auth → Sign In / Providers: **Confirm email kapalı**, Email → **Minimum password length 15**, "Require current password when updating" açık.
 3. pg_cron: `create extension if not exists pg_cron; select cron.schedule('bb-jobs-minutely','* * * * *','select bb_run_jobs()');`
 4. Kurulum anahtarı üret (yüksek entropili rastgele metin), SHA-256 hash'ini `setup_keys` tablosuna yaz. Düz anahtar yalnızca ilk kişiye verilir: `https://<site>/#/kurulum/<anahtar>`.
