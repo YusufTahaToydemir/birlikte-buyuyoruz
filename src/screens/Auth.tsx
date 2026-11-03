@@ -43,7 +43,7 @@ function RecoverForm({ onCancel }: { onCancel: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
-  const pErr = password && (password.length < 15 || password.length > 128) ? 'Şifre 15–128 karakter olmalı.' : null
+  const pErr = password && (password.length < 6 || password.length > 128) ? 'Şifre 6–128 karakter olmalı.' : null
   const p2Err = password2 && password2 !== password ? 'Şifreler aynı değil.' : null
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,7 +65,7 @@ function RecoverForm({ onCancel }: { onCancel: () => void }) {
       <form onSubmit={submit} className="space-y-4">
         <Field label="Kullanıcı adı"><input className="input" autoComplete="username" autoCapitalize="none" value={username} onChange={e => setUsername(e.target.value)} required /></Field>
         <Field label="Kurtarma kodu" hint="Örnek biçim: ABCD-EFGH"><input className="input font-mono" autoCapitalize="characters" value={code} onChange={e => setCode(e.target.value.toUpperCase())} required /></Field>
-        <Field label="Yeni şifre" error={pErr} hint="En az 15 karakter."><input className="input" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
+        <Field label="Yeni şifre" error={pErr} hint="En az 6 karakter."><input className="input" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
         <Field label="Yeni şifre (tekrar)" error={p2Err}><input className="input" type="password" autoComplete="new-password" value={password2} onChange={e => setPassword2(e.target.value)} required /></Field>
         {error && <p className="text-warn" role="alert">{error}</p>}
         <Button type="submit" className="w-full" disabled={busy || !!pErr || !!p2Err}>{busy ? 'Yenileniyor…' : 'Şifreyi yenile'}</Button>
@@ -128,7 +128,7 @@ function SignupForm({ kind, secret, onCancel }: { kind: 'setup' | 'invite'; secr
   const [error, setError] = useState<string | null>(null)
 
   const uErr = username && !USERNAME_RE.test(username) ? 'Kullanıcı adı 3–24 karakter; yalnızca küçük harf, rakam ve alt çizgi.' : null
-  const pErr = password && (password.length < 15 || password.length > 128) ? 'Şifre 15–128 karakter olmalı. Boşluk kullanabilirsin.' : null
+  const pErr = password && (password.length < 6 || password.length > 128) ? 'Şifre 6–128 karakter olmalı. Boşluk kullanabilirsin.' : null
   const p2Err = password2 && password2 !== password ? 'Şifreler aynı değil.' : null
 
   const submit = async (e: React.FormEvent) => {
@@ -156,7 +156,7 @@ function SignupForm({ kind, secret, onCancel }: { kind: 'setup' | 'invite'; secr
         <Field label="Görünen ad" hint="Uygulamada görünecek ad. Sonradan değiştirilebilir.">
           <input className="input" maxLength={40} value={displayName} onChange={e => setDisplayName(e.target.value)} />
         </Field>
-        <Field label="Şifre" error={pErr} hint="En az 15 karakter. Uzun bir cümle iyi bir şifredir.">
+        <Field label="Şifre" error={pErr} hint="En az 6 karakter. Uzun bir cümle daha güvenlidir.">
           <div className="flex gap-2">
             <input className="input" type={show ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required />
             <button type="button" className="btn btn-soft px-3" aria-pressed={show} onClick={() => setShow(s => !s)}>{show ? 'Gizle' : 'Göster'}</button>

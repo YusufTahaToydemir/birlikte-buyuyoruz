@@ -240,7 +240,7 @@ begin
   select count(*) into v_attempts from recovery_attempts where username = v_username and attempted_at > now() - interval '15 minutes';
   if v_attempts >= 5 then return jsonb_build_object('ok', false, 'error', 'RATE_LIMITED'); end if;
   insert into recovery_attempts (username) values (v_username);
-  if p_new_password is null or char_length(p_new_password) < 15 or char_length(p_new_password) > 128 then return jsonb_build_object('ok', false, 'error', 'PASSWORD_LENGTH'); end if;
+  if p_new_password is null or char_length(p_new_password) < 6 or char_length(p_new_password) > 128 then return jsonb_build_object('ok', false, 'error', 'PASSWORD_LENGTH'); end if;
   select id into u from app_users where username = v_username and status = 'ACTIVE';
   if u is not null then
     select id into v_id from recovery_codes where user_id = u and used_at is null and code_hash = bb_hash(u::text || ':' || upper(trim(p_code))) for update;

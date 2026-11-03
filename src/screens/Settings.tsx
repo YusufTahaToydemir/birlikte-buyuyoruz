@@ -83,9 +83,9 @@ export function Settings({ open, onClose, me, onChange }: { open: boolean; onClo
         <section className="space-y-2">
           <h3 className="font-bold">Şifre</h3>
           <Field label="Mevcut şifre"><input className="input" type="password" autoComplete="current-password" value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} /></Field>
-          <Field label="Yeni şifre" hint="15–128 karakter"><input className="input" type="password" autoComplete="new-password" value={pw.next} onChange={e => setPw(p => ({ ...p, next: e.target.value }))} /></Field>
+          <Field label="Yeni şifre" hint="6–128 karakter"><input className="input" type="password" autoComplete="new-password" value={pw.next} onChange={e => setPw(p => ({ ...p, next: e.target.value }))} /></Field>
           <Field label="Yeni şifre (tekrar)"><input className="input" type="password" autoComplete="new-password" value={pw.next2} onChange={e => setPw(p => ({ ...p, next2: e.target.value }))} /></Field>
-          <Button variant="soft" disabled={busy || pw.next.length < 15 || pw.next !== pw.next2 || !pw.current} onClick={() => void run(async () => { await changePassword(pw.current, pw.next, me.username); await revokeOtherSessions().catch(() => undefined); setPw({ current: '', next: '', next2: '' }) }, 'Şifre değiştirildi; diğer oturumlar kapatıldı.')}>Şifreyi değiştir</Button>
+          <Button variant="soft" disabled={busy || pw.next.length < 6 || pw.next !== pw.next2 || !pw.current} onClick={() => void run(async () => { await changePassword(pw.current, pw.next, me.username); await revokeOtherSessions().catch(() => undefined); setPw({ current: '', next: '', next2: '' }) }, 'Şifre değiştirildi; diğer oturumlar kapatıldı.')}>Şifreyi değiştir</Button>
         </section>
 
         <section className="space-y-2">

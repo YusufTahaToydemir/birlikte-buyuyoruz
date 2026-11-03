@@ -8,7 +8,7 @@
 **Tamamlanan (Aşama 1, "dikey çalışan temel")**
 
 - Tek kullanımlık kurulum anahtarı ile çift alanı + ilk hesap; 24 saat geçerli tek kullanımlık davetle ikinci hesap. Açık kayıt yok.
-- Kullanıcı adı + şifre girişi (en az 15 karakter, sunucuda zorlanır). Şifre değişiminde mevcut şifre zorunlu.
+- Kullanıcı adı + şifre girişi (en az 6 karakter; kullanıcı kararıyla şartnamedeki 15 yerine, sunucuda zorlanır). Şifre değişiminde mevcut şifre zorunlu.
 - İlk kurulum: karakter (tip, ten, saç/başörtüsü, saç rengi), görünen ad, başlangıç görevlerini gözden geçirme (aç/kapat, hedef, sünnet listesi), paylaşım açıklaması.
 - Başlangıç planı (14 şablon, §5) ve sürümlü ekonomi ayarları (`app_config.economy`, §26) seed edilmiş.
 - Günlük görev örnekleri sunucuda üretilir; Bugün ekranı: ikili tek dokunuş, sayısal/süre, saat (06.30), kontrol listesi, beslenme üçlü seçim, özel not, "yapılmadı", "takip dışı", kaydı kaldırma.
@@ -43,7 +43,7 @@
 
 - Çevrimdışı kayıt kuyruğu (§22): IndexedDB; görev değerleri kuyruğa yazılır, özel notlar alınmaz; satırda “cihazda kaydedildi · gönderilmeyi bekliyor”, XP önizlemesi `*` ile ayrılır. Aynı görevin bekleyen düzenlemeleri son değere birleşir, gönderimi başlamış olan değiştirilmez (birim testli). Bağlantı gelince sırayla gönderim; `DAY_LOCKED` → “süre dolduğu için gönderilemedi” kutusu (geçmişe yazılmaz); `REVISION_CONFLICT` → sunucudaki/cihazdaki değer karşılaştırması ve seçim. Son senkronize Bugün kopyası çevrimdışı gösterilir. Çıkışta kuyruk ve önbellek silinir; bekleyen kayıt varsa uyarı.
 - Plan düzenleme (§5): hedef/XP/gün/tür/kontrol listesi/ceza değişiklikleri **gelecek Pazartesi** sürümü olarak kaydedilir (`save_next_week_plan`), aktif hafta değişmez; sınırlar (20 görev, günde 200 XP, şablon 1–20 XP) sessizce kırpılmaz, hangi sınırın aşıldığı söylenir; ad/açıklama/ikon hemen (`rename_goal`); görev bırakma bugünden Pazar’a kadar takip dışı (`pause_goal`, kalan günler EXCUSED üretilir, geçmiş kopyalar silinmez); yeni özel görev eklenir.
-- Kurtarma kodları (§24): 8 tek kullanımlık kod, yalnızca bir kez gösterilir, hash saklanır; oturumsuz `recover_with_code`: kullanıcı adı+kod, 15 dakikada 5 deneme (başarısız deneme kalıcı kaydedilir), kullanıcı varlığını açığa çıkarmaz, şifre 15–128, tüm oturumları kapatır.
+- Kurtarma kodları (§24): 8 tek kullanımlık kod, yalnızca bir kez gösterilir, hash saklanır; oturumsuz `recover_with_code`: kullanıcı adı+kod, 15 dakikada 5 deneme (başarısız deneme kalıcı kaydedilir), kullanıcı varlığını açığa çıkarmaz, şifre 6–128, tüm oturumları kapatır.
 - Cihaz oturumları: listeleme, tekil kapatma, “diğer tüm oturumları kapat”; şifre değişiminde diğer oturumlar kapanır.
 - Dışa aktarma (§25): JSON ve CSV, yeniden şifre doğrulamasıyla; notlar yalnızca istenirse; partner verisi yok; CSV formül enjeksiyonu koruması.
 - Çift bağlantısını kesme (§25): bekleyen bilet istekleri iptal, kalan biletler arşiv (`ARCHIVED`), ortak öneriler kapanır, ayrılan kişi tek kişilik alanında devam eder; partnerin verisi silinmez.
@@ -75,7 +75,7 @@ Bilinen denetim notu: `npm audit` yalnızca derleme zamanı araçlarında (workb
 ## Kurulum
 
 1. Supabase projesi aç; `supabase/migrations/` altındaki dosyaları sırayla SQL Editor'de çalıştır (idempotent).
-2. Auth → Sign In / Providers: **Confirm email kapalı**, Email → **Minimum password length 15**, "Require current password when updating" açık.
+2. Auth → Sign In / Providers: **Confirm email kapalı**, Email → **Minimum password length 6** (kullanıcı tercihi; şartname 15 der), "Require current password when updating" açık.
 3. pg_cron: `create extension if not exists pg_cron; select cron.schedule('bb-jobs-minutely','* * * * *','select bb_run_jobs()');`
 4. Kurulum anahtarı üret (yüksek entropili rastgele metin), SHA-256 hash'ini `setup_keys` tablosuna yaz. Düz anahtar yalnızca ilk kişiye verilir: `https://<site>/#/kurulum/<anahtar>`.
 5. `.env.production` içine `VITE_SUPABASE_URL` ve `VITE_SUPABASE_KEY` (publishable key; herkese açık olması tasarım gereğidir, veriyi RLS korur).

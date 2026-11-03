@@ -186,7 +186,7 @@ export const ERROR_TEXT: Record<string, string> = {
   CHECKLIST_EMPTY: 'Kontrol listesi boşken görev aktif olamaz.',
   INVALID_RECOVERY: 'Kullanıcı adı veya kurtarma kodu hatalı.',
   RATE_LIMITED: 'Çok fazla deneme. 15 dakika sonra tekrar dene.',
-  PASSWORD_LENGTH: 'Şifre 15–128 karakter olmalı.',
+  PASSWORD_LENGTH: 'Şifre 6–128 karakter olmalı.',
   COUPLE_DISCONNECTED: 'Bu çift alanı kapandı.',
   NETWORK: 'Bağlantı kurulamadı. İnternetini kontrol et.',
 }
@@ -222,7 +222,7 @@ export async function signUp(username: string, password: string, displayName: st
   if (error) {
     const m = error.message
     if (m.includes('Database error')) throw new ApiError(secret.setupKey ? 'INVALID_SETUP_KEY' : 'INVALID_INVITE')
-    if (m.toLowerCase().includes('password')) throw new ApiError('Şifre en az 15 karakter olmalı.')
+    if (m.toLowerCase().includes('password')) throw new ApiError('Şifre en az 6 karakter olmalı.')
     if (m.toLowerCase().includes('already')) throw new ApiError('USERNAME_TAKEN')
     throw new ApiError(m)
   }
