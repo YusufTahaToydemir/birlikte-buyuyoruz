@@ -52,7 +52,9 @@ export function App() {
       setMeError(null)
       setMe(await getMe())
     } catch (e) {
-      setMeError(e instanceof Error ? e.message : String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg === 'UNAUTHENTICATED') { await supabase.auth.signOut(); return }
+      setMeError(msg)
     }
   }, [])
 
@@ -98,9 +100,9 @@ export function App() {
       )}
       <main className="px-4 pb-[calc(84px+env(safe-area-inset-bottom))]">
         {tab === 'today' && <Today me={me} onTotalsChange={reloadMe} />}
-        {tab === 'us' && <Us me={me} />}
+        {tab === 'us' && <Us me={me} onChange={reloadMe} />}
         {tab === 'me' && <Character me={me} onChange={reloadMe} />}
-        {tab === 'rewards' && <Rewards me={me} />}
+        {tab === 'rewards' && <Rewards me={me} onChange={reloadMe} />}
       </main>
       <nav aria-label="Ana menü" className="fixed bottom-0 left-0 right-0 bg-card border-t border-line">
         <ul className="mx-auto max-w-[520px] grid grid-cols-4 pb-[env(safe-area-inset-bottom)]">

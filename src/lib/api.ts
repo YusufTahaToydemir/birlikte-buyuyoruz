@@ -51,6 +51,7 @@ export interface Me {
   couple: { id: string; timezone: string; status: string; hasPartner: boolean; pendingInvite: { expiresAt: string } | null }
   totals: Totals
   hearts: number
+  inventory: string[]
   tickets: { available: number; requested: number; used: number }
   config: Record<string, unknown>
   serverTime: string
@@ -78,18 +79,22 @@ export interface RecordResult {
   correctionDeadline: string
   serverTime: string
 }
+export interface Activity { id: string; creatorId: string; type: string; title: string; date: string; time: string | null; status: string; confirmedBy: string[]; firstConfirmedAt: string | null; createdAt: string }
 export interface CoupleData {
   serverTime: string
   today: string
+  myLevel: number
   couple: { id: string; name: string; status: string; gardenXP: number; gardenLevel: number; gardenLevels: number[] }
   partner: null | {
     id: string; displayName: string; avatar: AvatarConfig; equipped: Record<string, string>; level: number; excusedToday: boolean
     todayPlannedXP?: number; todayGrossXP?: number; todayCompleted?: number; todayTracked?: number; hearts?: number; ticketsAvailable?: number
   }
+  decor: Array<{ itemId: string; placed: boolean; name: string; assetKey: string }>
+  skills: Array<{ id: string; name: string; requiredLevel: number; description: string }>
   memories: Array<{ type: 'LEVEL' | 'ACTIVITY' | 'DECOR'; name?: string; level?: number; title?: string; itemId?: string; at: string }>
-  skillsReceivedToday: Array<{ id: string; skillId: string; payload: Record<string, string>; at: string }>
+  skillsReceived: Array<{ id: string; skillId: string; payload: Record<string, string>; at: string; from: string }>
   skillsSentToday: string[]
-  activities: Array<{ id: string; creatorId: string; type: string; title: string; date: string; time: string | null; status: string; confirmedBy: string[]; createdAt: string }>
+  activities: Activity[]
 }
 export interface RewardsData {
   weekStart: string
@@ -142,6 +147,18 @@ export const ERROR_TEXT: Record<string, string> = {
   ALREADY_ONBOARDED: 'Kurulum zaten tamamlanmış.',
   TOO_MANY_GOALS: 'En çok 20 aktif görev olabilir.',
   DAILY_XP_LIMIT: 'Günlük planlanan XP 200’ü geçemez.',
+  LEVEL_LOCKED: 'Bu içerik seviyenle henüz açılmadı.',
+  GARDEN_LOCKED: 'Ortak bahçe seviyesi henüz yeterli değil.',
+  ALREADY_OWNED: 'Zaten edinilmiş.',
+  INSUFFICIENT_HEARTS: 'Yeterli kalp yok.',
+  NOT_OWNED: 'Bu ürün sende yok.',
+  OUTFIT_IS_FREE: 'Kıyafetler satın alınmaz; “Giy” ile kullanılır.',
+  NO_PARTNER: 'Partnerin henüz katılmadı.',
+  SKILL_DAILY_LIMIT: 'Bu beceriyi bugün zaten gönderdin.',
+  SKILL_TOTAL_LIMIT: 'Günde en çok üç gönderim yapılabilir.',
+  INVALID_STATE: 'Bu işlem şu anki durumda yapılamaz.',
+  NOT_ACCEPTED_YET: 'Partnerin henüz kabul etmedi.',
+  FORBIDDEN: 'Bu işlem için yetkin yok.',
   NETWORK: 'Bağlantı kurulamadı. İnternetini kontrol et.',
 }
 export const errorText = (e: unknown): string => {
@@ -225,6 +242,16 @@ export const finishOnboarding = (displayName: string, avatar: AvatarConfig, goal
   rpc<Me>('finish_onboarding', { p_display_name: displayName, p_avatar: avatar, p_goals: goals })
 export const updateSharing = (p: Partial<Me['sharing']>) => rpc<Me>('update_sharing', { p })
 export const createInvite = () => rpc<{ token: string; expiresAt: string }>('create_invite')
+
+// ---------- Aşama 2 ----------
+export const equipItem = (slot: 'outfit' | 'head' | 'hand' | 'effect', itemId: string | null) => rpc<Me>('equip_item', { p_slot: slot, p_item_id: itemId })
+export const purchaseItem = (itemId: string) => rpc<{ itemId: string; hearts: number }>('purchase_item', { p_item_id: itemId, p_operation_id: crypto.randomUUID() })
+export const toggleDecor = (itemId: string, placed: boolean) => rpc<void>('toggle_decor', { p_item_id: itemId, p_placed: placed })
+export const useSkill = (skillId: string, payload: Record<string, string> = {}) => rpc<{ id: string; skillId: string }>('use_skill', { p_skill_id: skillId, p_payload: payload })
+export const proposeActivity = (type: string, title: string, date: string, time: string | null) => rpc<{ id: string }>('propose_activity', { p_type: type, p_title: title, p_date: date, p_time: time })
+export const respondActivity = (id: string, action: 'accept' | 'later' | 'cancel') => rpc<{ id: string; status: string }>('respond_activity', { p_id: id, p_action: action })
+export const confirmActivity = (id: string) => rpc<{ id: string; status: string; confirmations: number }>('confirm_activity', { p_id: id })
+export const hideActivity = (id: string) => rpc<void>('hide_activity', { p_id: id })
 
 // Kurulumdaki görev listesi (doğrudan tablo okuması; RLS yalnızca kendi satırlarını verir)
 export interface GoalRow { id: string; code: string; name: string; description: string; icon: string; category: string; input_type: InputType; target: number; unit: string; weekdays: number[]; max_xp: number; items: string[]; active: boolean; sort_order: number; group_key: string | null }
