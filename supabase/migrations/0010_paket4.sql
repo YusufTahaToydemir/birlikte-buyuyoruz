@@ -192,15 +192,15 @@ end $$;
 
 create or replace function get_season() returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare u uuid := bb_current_user(); c couples; v_today date; n int; s date; e date;
+declare u uuid := bb_current_user(); c couples; v_today date; v_n int; v_s date; v_e date;
 begin
   c := bb_couple_of(u);
   v_today := bb_local_date(now(), c.timezone);
-  n := bb_season_n(v_today); s := bb_season_start(n); e := bb_season_start(n + 1) - 1;
+  v_n := bb_season_n(v_today); v_s := bb_season_start(v_n); v_e := bb_season_start(v_n + 1) - 1;
   return jsonb_build_object(
-    'n', n, 'name', bb_season_name(n), 'start', s, 'end', e, 'daysLeft', e - v_today + 1, 'dayOf', v_today - s + 1, 'days', e - s + 1,
-    'summary', bb_season_summary(c.id, s, v_today),
-    'past', (select coalesce(jsonb_agg(jsonb_build_object('n', n, 'name', bb_season_name(n), 'start', start_date, 'end', end_date, 'summary', summary) order by n desc), '[]'::jsonb) from seasons where couple_id = c.id));
+    'n', v_n, 'name', bb_season_name(v_n), 'start', v_s, 'end', v_e, 'daysLeft', v_e - v_today + 1, 'dayOf', v_today - v_s + 1, 'days', v_e - v_s + 1,
+    'summary', bb_season_summary(c.id, v_s, v_today),
+    'past', (select coalesce(jsonb_agg(jsonb_build_object('n', ss.n, 'name', bb_season_name(ss.n), 'start', ss.start_date, 'end', ss.end_date, 'summary', ss.summary) order by ss.n desc), '[]'::jsonb) from seasons ss where ss.couple_id = c.id));
 end $$;
 
 -- Sezon sonu: özet kaydı + ikisine de 250 altın + olay
