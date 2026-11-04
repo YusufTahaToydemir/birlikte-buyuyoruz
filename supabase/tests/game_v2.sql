@@ -44,7 +44,8 @@ begin
   if (r->'game'->'hero'->>'xp')::int <> 0 or (r->'game'->'boss'->>'hp') <> (r->'game'->'boss'->>'maxHp') then raise exception 'geri al'; end if;
   res := res || E'\ngörev · +22 XP +10 altın, boss -22; tekrar tık etkisiz; geri al her şeyi geri verir ✓';
 
-  -- Seviye atlama: tüm görevleri yap (>=100 XP)
+  -- Seviye atlama: tüm görevleri yap (0006: Sv 2 = 180 XP, eksiği önceden ver)
+  update heroes set xp = 120 where user_id = a; insert into hero_log (user_id, kind, xp) values (a, 'TEST', 120);
   for q in select (e->>'id')::uuid as id from jsonb_array_elements(g->'quests') e loop
     r := complete_quest(q.id, true);
   end loop;
@@ -106,8 +107,8 @@ begin
   update hero_days set closed = false where user_id = b and local_date = v_today;
   r := complete_quest(q.id, true);
   if not (r->'game'->'boss'->>'defeated')::boolean then raise exception 'boss yenilmedi'; end if;
-  if (select count(*) from tickets where source = 'BOSS') <> 2 then raise exception 'boss bileti'; end if;
-  res := res || E'\nboss · yenildi, ikinize bilet + altın ✓';
+  if (select count(*) from shard_log where source = 'BOSS') <> 2 then raise exception 'boss parçası'; end if;
+  res := res || E'\nboss · yenildi, ikinize bilet parçası + altın ✓';
 
   -- Zorluk: görev yapılmışsa yarın
   r := set_difficulty(6);
