@@ -24,6 +24,13 @@ Kullanıcı geri bildirimi esas alınır; ilk şartname yalnızca arka plan bilg
 - Birlikte: haftada 4 gerçek hayat etkinliği; biri "Yaptık!" der, diğeri onaylar → ikinize +40 XP +25 altın, boss'a ortak hasar.
 - Müzik: kodla bestelenen 4 çiptune parça (giriş, köy, savaş, oyun), efektlerden ayrı açılıp kapanır.
 
+## Dört paket (v4, 4 Kasım 2026; migrations 0007–0010, testler `supabase/tests/paket1-4.sql`)
+
+- **Aylarca sürsün:** Seri Kalkanı (dükkân, en fazla 2; eksik günde seri korunur), 3 kademeli bilet (Yeşil %60 / Turuncu %30 / Kırmızı %10; her 4. en az turuncu, her 10. kırmızı; isteğe ödül notu), görev zincirleri (üst üste gün sayacı, izin günü korur), ay takvimi (ikinizin günleri, güne dokununca görev listesi), eşin kahramanı sahnede.
+- **Derinlik:** statlar işe yarar (bonus % = √stat, en çok 20: Güç → can, Zekâ → XP, Ruh → hasar, Düzen → altın), sınıf yetenekleri haftada bir (Savaş Çığlığı 2× hasar, Büyük Büyü 2× XP, Büyük Şifa ikisinin canı, Keşif yan görev +1), günün olayı (çift için ortak, 12 günde 8; Ruh Dalgası, Bilgelik, Güç, Düzen, Altın Yağmuru, Çift Gün, Canavar Öfkeli, Kombo Günü), canavar zayıflığı ×1.5 ve öfke evresi (son %25 yarım hasar), Bestiyer.
+- **Birlikte:** Çift Testi (haftada 5 soru; kendi cevabın + eşinin tahmini; 100 soru havuzu + kendi sorularınız), Not Defteri (günde 1 mektup, günde 1 şükür; ikisi de yazınca +10 altın; hatıra defteri), Ortak Baskın (günün oyunu, iki puanın toplamı canavara en çok 120 hasar), Hızlı Hesap ve Renk Tuzağı düelloları, Günün Kelimesi ipucu (10 altın, günde 2).
+- **Kale ve sezon:** ortak kale (25 parça, altın kendi kesenden, kütüphane/demirci/mescit/bahçe/pazar/kuyu/mutfak küçük bonus verir), 3 aylık sezonlar (1 Kasım 2026'dan; özet, sezon sonu +250 altın), Web Push altyapısı (`supabase/functions/push`, `public/push-sw.js`; pg_cron `bb-push` 5 dakikada bir çağırır; VAPID anahtarları ve PUSH_SECRET Edge Function gizli değerlerinde).
+
 ## Ekranlar
 
 | Sekme | İçerik |
