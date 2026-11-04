@@ -4,6 +4,7 @@ import type { DuelGame } from '../lib/game'
 import { BossSprite, Icon } from './Sprite'
 import { fx } from './fx'
 import { sfx } from './sfx'
+import { WORDS, WORDS_BY_CAT } from './words'
 
 export const GAME_INFO: Record<DuelGame, { name: string; icon: string; rule: string; color: string; max: number }> = {
   TAP: { name: 'Balçık Avı', icon: 'slime', rule: 'Balçıklara vur! Altın +3, kafatası −2', color: '#5bd17c', max: 120 },
@@ -223,21 +224,6 @@ export function TimingGame({ seed, onEnd }: GameProps) {
 }
 
 // ---------------------------------------------------------------- 4) Kelime Düellosu (İngilizce → Türkçe)
-const WORDS: Array<[string, string]> = [
-  ['apple', 'elma'], ['book', 'kitap'], ['water', 'su'], ['house', 'ev'], ['friend', 'arkadaş'], ['morning', 'sabah'], ['night', 'gece'], ['bread', 'ekmek'],
-  ['sun', 'güneş'], ['moon', 'ay'], ['star', 'yıldız'], ['tree', 'ağaç'], ['flower', 'çiçek'], ['sea', 'deniz'], ['mountain', 'dağ'], ['river', 'nehir'],
-  ['strong', 'güçlü'], ['brave', 'cesur'], ['happy', 'mutlu'], ['tired', 'yorgun'], ['hungry', 'aç'], ['beautiful', 'güzel'], ['quick', 'hızlı'], ['slow', 'yavaş'],
-  ['heart', 'kalp'], ['hand', 'el'], ['eye', 'göz'], ['door', 'kapı'], ['window', 'pencere'], ['kitchen', 'mutfak'], ['garden', 'bahçe'], ['street', 'sokak'],
-  ['teacher', 'öğretmen'], ['student', 'öğrenci'], ['doctor', 'doktor'], ['family', 'aile'], ['mother', 'anne'], ['father', 'baba'], ['sister', 'kız kardeş'], ['brother', 'erkek kardeş'],
-  ['wife', 'eş (kadın)'], ['husband', 'eş (erkek)'], ['child', 'çocuk'], ['neighbor', 'komşu'], ['guest', 'misafir'], ['gift', 'hediye'], ['money', 'para'], ['market', 'pazar'],
-  ['to read', 'okumak'], ['to write', 'yazmak'], ['to learn', 'öğrenmek'], ['to run', 'koşmak'], ['to swim', 'yüzmek'], ['to cook', 'yemek yapmak'], ['to sleep', 'uyumak'], ['to wake up', 'uyanmak'],
-  ['to pray', 'dua etmek'], ['to help', 'yardım etmek'], ['to forgive', 'affetmek'], ['to wait', 'beklemek'], ['to win', 'kazanmak'], ['to lose', 'kaybetmek'], ['to try', 'denemek'], ['to remember', 'hatırlamak'],
-  ['patience', 'sabır'], ['peace', 'huzur'], ['hope', 'umut'], ['truth', 'gerçek'], ['kindness', 'nezaket'], ['knowledge', 'bilgi'], ['wisdom', 'hikmet'], ['gratitude', 'şükür'],
-  ['always', 'her zaman'], ['never', 'asla'], ['sometimes', 'bazen'], ['today', 'bugün'], ['tomorrow', 'yarın'], ['yesterday', 'dün'], ['early', 'erken'], ['late', 'geç'],
-  ['cloud', 'bulut'], ['rain', 'yağmur'], ['snow', 'kar'], ['wind', 'rüzgâr'], ['fire', 'ateş'], ['stone', 'taş'], ['gold', 'altın'], ['silver', 'gümüş'],
-  ['sword', 'kılıç'], ['shield', 'kalkan'], ['dragon', 'ejderha'], ['castle', 'kale'], ['king', 'kral'], ['queen', 'kraliçe'], ['journey', 'yolculuk'], ['treasure', 'hazine'],
-  ['healthy', 'sağlıklı'], ['clean', 'temiz'], ['quiet', 'sessiz'], ['busy', 'meşgul'], ['ready', 'hazır'], ['careful', 'dikkatli'], ['honest', 'dürüst'], ['generous', 'cömert'],
-]
 const WORDS_MS = 30000
 export function WordsGame({ seed, onEnd }: GameProps) {
   const qs = useMemo(() => {
@@ -245,9 +231,10 @@ export function WordsGame({ seed, onEnd }: GameProps) {
     const order = shuffle([...WORDS.keys()], R)
     return order.map(i => {
       const wrong = new Set<number>()
-      while (wrong.size < 3) { const j = Math.floor(R() * WORDS.length); if (j !== i) wrong.add(j) }
+      const pool = WORDS_BY_CAT[WORDS[i].cat]
+      while (wrong.size < 3) { const j = pool[Math.floor(R() * pool.length)]; if (j !== i) wrong.add(j) }
       const opts = shuffle([i, ...wrong], R)
-      return { en: WORDS[i][0], answer: i, opts }
+      return { en: WORDS[i].en, answer: i, opts }
     })
   }, [seed])
   const [start] = useState(() => performance.now())
@@ -279,7 +266,7 @@ export function WordsGame({ seed, onEnd }: GameProps) {
           return (
             <button key={o} onPointerDown={e => pick(o, e)}
               className={`pbtn !min-h-[68px] text-lg leading-tight ${st === 'ok' ? 'pbtn-green' : st === 'bad' ? 'pbtn-red' : 'pbtn-dark'}`}>
-              {WORDS[o][1]}
+              {WORDS[o].tr}
             </button>
           )
         })}
