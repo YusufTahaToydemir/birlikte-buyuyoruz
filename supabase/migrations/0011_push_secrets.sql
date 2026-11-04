@@ -24,13 +24,11 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke execute on function bb_push_secrets() from public, anon, authenticated;
 
--- cron: sırrı app_secrets'ten al
+-- cron: sırrı app_secrets'ten al (fonksiyonda "Verify JWT" kapalı; yetki x-kyron-secret başlığıyla)
 do $$ begin if exists (select 1 from cron.job where jobname = 'bb-push') then perform cron.unschedule('bb-push'); end if; end $$;
 select cron.schedule('bb-push', '*/5 * * * *', $job$select net.http_post(
   url := 'https://wricfuhizwzvlpnvkfxi.supabase.co/functions/v1/push',
   headers := jsonb_build_object('Content-Type', 'application/json',
-    'apikey', (select value from app_secrets where key = 'gatewayKey'),
-    'Authorization', 'Bearer ' || (select value from app_secrets where key = 'gatewayKey'),
     'x-kyron-secret', (select value from app_secrets where key = 'pushSecret')),
   body := '{}'::jsonb)$job$);
 
