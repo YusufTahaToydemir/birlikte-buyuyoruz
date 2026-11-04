@@ -129,7 +129,7 @@ export function EventOverlay() {
     }
     case 'TICKET': {
       const tier = TICKET_TIERS[(d.tier as TicketTier) ?? 'GREEN'] ?? TICKET_TIERS.GREEN
-      art = <div className="relative"><ShardMeter n={4} need={4} size={56} /><Icon name="ticket" size={110} className={`glow absolute inset-0 m-auto popin tier-${String(d.tier ?? 'GREEN')}`} /></div>
+      art = <div className="relative"><ShardMeter n={4} need={4} size={56} /><span className={`absolute inset-0 grid place-items-center tier-${String(d.tier ?? 'GREEN')}`}><Icon name="ticket" size={110} className="glow popin" /></span></div>
       title = `${tier.name.toLocaleUpperCase('tr-TR')} BİLET!`; color = tier.color
       sub = <span className="flex items-center gap-1 text-ink2"><Icon name="shard" size={18} />4 parça birleşti!{d.tier === 'RED' && <span className="text-hp"> · En nadiri!</span>}</span>
       break
@@ -202,7 +202,7 @@ export function EventOverlay() {
       break
     case 'TICKET_REQUEST': {
       const tier = TICKET_TIERS[(d.tier as TicketTier) ?? 'GREEN'] ?? TICKET_TIERS.GREEN
-      art = <Icon name="ticket" size={110} className={`glow tier-${String(d.tier ?? 'GREEN')}`} />; title = `${tier.name} bilet!`; color = tier.color; rays = false
+      art = <span className={`inline-flex tier-${String(d.tier ?? 'GREEN')}`}><Icon name="ticket" size={110} className="glow" /></span>; title = `${tier.name} bilet!`; color = tier.color; rays = false
       sub = <span className="flex flex-col items-center gap-1 text-ink"><span>{cur.from} bir bilet kullanmak istiyor</span>{d.note ? <span className="font-pixel text-gold text-lg">« {String(d.note)} »</span> : null}</span>
       action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('loot')}>Bak</button>
       break

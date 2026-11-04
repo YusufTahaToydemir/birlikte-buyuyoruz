@@ -19,7 +19,7 @@ function gearWith(eq: Gear, i: ShopItem): Gear {
 
 /** Bilet: kademe rengine boyanmış piksel bilet */
 export function TicketArt({ tier, size = 40, className = '' }: { tier: TicketTier | null | undefined; size?: number; className?: string }) {
-  return <Icon name="ticket" size={size} className={`tier-${tier ?? 'GREEN'} ${className}`} />
+  return <span className={`inline-flex tier-${tier ?? 'GREEN'}`}><Icon name="ticket" size={size} className={className} /></span>
 }
 
 function ItemArt({ item, size = 40 }: { item: ShopItem; size?: number }) {
