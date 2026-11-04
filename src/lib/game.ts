@@ -34,11 +34,23 @@ export interface Game {
   achievements: string[]
   tickets: { available: number; requested: number; used: number }
   incomingRequests: number
+  chains: Record<string, { chain: number; best: number }>
   play: { duels: number; together: number; word: boolean }
 }
 export interface Delta { xp: number; gold: number; damage: number; defeated?: boolean }
-export interface Ticket { id: string; week: string | null; status: 'AVAILABLE' | 'REQUESTED' | 'USED' | 'ARCHIVED'; source: string | null; createdAt: string }
-export interface Redemption { id: string; ticketId: string; requestedBy: string; partnerId: string; status: string; expiresAt: string; resolvedAt: string | null; reversalRequestedBy: string | null; createdAt: string }
+export type TicketTier = 'GREEN' | 'ORANGE' | 'RED'
+export interface Ticket { id: string; week: string | null; status: 'AVAILABLE' | 'REQUESTED' | 'USED' | 'ARCHIVED'; source: string | null; tier: TicketTier; createdAt: string }
+export interface Redemption { id: string; ticketId: string; requestedBy: string; partnerId: string; status: string; expiresAt: string; resolvedAt: string | null; reversalRequestedBy: string | null; createdAt: string; note: string | null; tier: TicketTier | null }
+/** Bilet kademeleri: kullanıcının kendi sistemi (kırmızı en nadir) */
+export const TICKET_TIERS: Record<TicketTier, { name: string; color: string; rank: number }> = {
+  GREEN: { name: 'Yeşil', color: '#5bd17c', rank: 0 },
+  ORANGE: { name: 'Turuncu', color: '#ff8a3d', rank: 1 },
+  RED: { name: 'Kırmızı', color: '#ff4d6d', rank: 2 },
+}
+export interface CalendarDay { d: string; allDone: boolean; izin: boolean; closed: boolean; hpLost: number; done: number; total: number; combo: boolean }
+export interface Calendar { month: string; today: string; me: CalendarDay[]; partner: CalendarDay[]; firstDay: string | null; totals: { fullDays: number; combos: number } }
+export interface DayQuest { code: string; kind: 'DAILY' | 'SIDE'; category: Category; icon: string; title: string; done: boolean }
+export interface DayDetail { date: string; me: DayQuest[]; partner: DayQuest[]; meDay: { izin: boolean; allDone: boolean; hpLost: number } | null; partnerDay: { izin: boolean; allDone: boolean; hpLost: number } | null }
 
 export class ApiError extends Error {
   code: string
@@ -71,6 +83,7 @@ const ERROR_TEXT: Record<string, string> = {
   DUEL_EXPIRED: 'Bu düellonun süresi doldu.',
   INVALID_WORD: '5 harfli bir kelime yaz.',
   NO_GUESSES_LEFT: 'Tahmin hakkın bitti, sıra eşinde.',
+  MAX_HELD: 'En fazla 2 tane taşıyabilirsin.',
 }
 export function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : e instanceof Error ? e.message : String(e)
@@ -129,7 +142,9 @@ export const markEventsSeen = (ids: string[]) => rpc<void>('mark_events_seen', {
 
 // ---------- Biletler ----------
 export const getTickets = () => rpc<{ serverTime: string; tickets: Ticket[]; redemptions: Redemption[] }>('get_tickets')
-export const requestTicket = (ticketId: string) => rpc<Redemption>('request_ticket', { p_ticket_id: ticketId, p_operation_id: crypto.randomUUID() })
+export const requestTicket = (ticketId: string, note = '') => rpc<Redemption>('request_ticket', { p_ticket_id: ticketId, p_operation_id: crypto.randomUUID(), p_note: note || null })
+export const getCalendar = (month: string) => rpc<Calendar>('get_calendar', { p_month: month })
+export const getDay = (date: string) => rpc<DayDetail>('get_day', { p_date: date })
 export const respondRedemption = (id: string, action: 'approve' | 'not_now' | 'withdraw') => rpc<Redemption>('respond_redemption', { p_id: id, p_action: action })
 
 // ---------- Hesap ----------
@@ -163,11 +178,12 @@ export const togetherCancel = (code: string) => rpc<Games>('together_cancel', { 
 
 // ---------- Dükkan kataloğu (sunucudakiyle aynı) ----------
 export type Slot = 'weapon' | 'armor' | 'head' | 'cape' | 'pet'
-export interface ShopItem { key: string; name: string; kind: 'WEAPON' | 'ARMOR' | 'HEAD' | 'CAPE' | 'PET' | 'POTION'; tier: number; minLevel: number; price: number; effect: number }
+export interface ShopItem { key: string; name: string; kind: 'WEAPON' | 'ARMOR' | 'HEAD' | 'CAPE' | 'PET' | 'POTION' | 'CHARM'; tier: number; minLevel: number; price: number; effect: number }
 const I = (key: string, name: string, kind: ShopItem['kind'], tier: number, minLevel: number, price: number, effect = 0): ShopItem => ({ key, name, kind, tier, minLevel, price, effect })
 export const SHOP: ShopItem[] = [
   I('potion_small', 'Can İksiri', 'POTION', 0, 1, 25, 30),
   I('potion_big', 'Büyük İksir', 'POTION', 0, 6, 60, 80),
+  I('streak_shield', 'Seri Kalkanı', 'CHARM', 0, 3, 500, 0),
   I('weapon_1', 'Bronz Silah', 'WEAPON', 1, 3, 100), I('weapon_2', 'Gümüş Silah', 'WEAPON', 2, 10, 400),
   I('weapon_3', 'Altın Silah', 'WEAPON', 3, 22, 1200), I('weapon_4', 'Efsanevi Silah', 'WEAPON', 4, 38, 3000),
   I('weapon_5', 'Ejder Silahı', 'WEAPON', 5, 55, 6000), I('weapon_6', 'Yıldız Silahı', 'WEAPON', 6, 75, 12000),
@@ -219,6 +235,8 @@ export const ACHIEVEMENTS: Array<{ key: string; name: string; icon: string }> = 
   { key: 'STREAK_7', name: '7 Gün Seri', icon: 'flame' },
   { key: 'STREAK_30', name: '30 Gün Seri', icon: 'flame' },
   { key: 'STREAK_100', name: '100 Gün Seri', icon: 'sun' },
+  { key: 'CHAIN_30', name: '30 Günlük Zincir', icon: 'flame' },
+  { key: 'CHAIN_100', name: '100 Günlük Zincir', icon: 'rune' },
   { key: 'BOSS_1', name: 'Canavar Avcısı', icon: 'swords' },
   { key: 'BOSS_5', name: 'Efsane Avcı', icon: 'crown' },
   { key: 'BOSS_20', name: 'Ejder Terbiyecisi', icon: 'skull' },

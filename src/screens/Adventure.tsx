@@ -5,6 +5,8 @@ import { BossSprite, HeroSprite, Icon, PetSprite, SceneAmbient, SceneBg } from '
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Segments, Stars, toastError, useGame } from '../game/ui'
+import { timeOfDay } from '../game/art/scene'
+import { online } from './Games'
 
 export function Adventure() {
   const { game, setGame, run, go } = useGame()
@@ -21,6 +23,8 @@ export function Adventure() {
   const allDone = daily.length > 0 && doneDaily === daily.length
   const izin = game.day?.izin ?? false
   const boss = game.boss
+  const partner = game.partner
+  const chainOf = (q: Quest) => (q.kind === 'DAILY' ? (game.chains?.[q.code]?.chain ?? 0) + (q.done ? 1 : 0) : 0)
   const potions = (game.inventory.potion_small ?? 0) + (game.inventory.potion_big ?? 0)
 
   const play = (cls: string, set: (s: string) => void) => { set(''); requestAnimationFrame(() => set(cls)); window.setTimeout(() => set(''), 600) }
@@ -87,7 +91,22 @@ export function Adventure() {
         <div className={`absolute left-[8%] bottom-[10px] ${heroFx}`}>
           <HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={3} pose={allDone ? 'joy' : hero.hp < hero.maxHp * 0.3 ? 'hurt' : undefined} />
         </div>
-        {hero.equipped.pet && <div className="absolute left-[40%] bottom-[18px]"><PetSprite petKey={hero.equipped.pet} scale={2} /></div>}
+        {hero.equipped.pet && <div className="absolute left-[24%] bottom-[14px]"><PetSprite petKey={hero.equipped.pet} scale={1.6} /></div>}
+        {partner && (() => {
+          const pDone = partner.todayTotal > 0 && partner.todayDone === partner.todayTotal
+          const pOn = online(partner.lastSeen, game.serverTime)
+          return (
+            <>
+              <div className={`absolute left-[36%] bottom-[10px] ${pDone ? 'bob' : ''}`} style={{ opacity: pOn || pDone ? 1 : 0.78 }}>
+                {!pOn && !pDone && <span className="absolute -top-4 left-1/2 font-pixel text-[13px] text-ink2 zz">z z</span>}
+                <HeroSprite cls={partner.class} look={partner.look} gear={partner.equipped} scale={2.6} pose={pDone ? 'joy' : undefined} label={partner.name} />
+                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-edge ${pOn ? 'bg-ok' : 'bg-ink2/40'}`} />
+              </div>
+              {partner.equipped.pet && <div className="absolute left-[52%] bottom-[12px]"><PetSprite petKey={partner.equipped.pet} scale={1.4} /></div>}
+            </>
+          )
+        })()}
+        {timeOfDay() === 'night' && <div className="absolute left-[29%] bottom-[8px] firelight"><Icon name="flame" size={22} /></div>}
         {boss && (
           <button className="absolute right-[5%] bottom-[16px] flex flex-col items-center" onClick={() => go('arena')} aria-label={boss.name}>
             {boss.defeated ? (
@@ -127,7 +146,7 @@ export function Adventure() {
 
       {/* Günlük görevler */}
       <ul className="space-y-2">
-        {daily.map(q => <QuestCard key={q.id} q={q} onToggle={toggle} busy={q.id in pending} />)}
+        {daily.map(q => <QuestCard key={q.id} q={q} onToggle={toggle} busy={q.id in pending} chain={chainOf(q)} />)}
       </ul>
 
       {side.length > 0 && (
@@ -142,8 +161,9 @@ export function Adventure() {
   )
 }
 
-function QuestCard({ q, onToggle, busy, side }: { q: Quest; onToggle: (q: Quest, el: HTMLElement) => void; busy: boolean; side?: boolean }) {
+function QuestCard({ q, onToggle, busy, side, chain = 0 }: { q: Quest; onToggle: (q: Quest, el: HTMLElement) => void; busy: boolean; side?: boolean; chain?: number }) {
   const cat = CAT_INFO[q.category]
+  const chainColor = chain >= 30 ? '#ff4d6d' : chain >= 7 ? '#ffcc3a' : '#ff8a3d'
   return (
     <li>
       <button
@@ -159,6 +179,7 @@ function QuestCard({ q, onToggle, busy, side }: { q: Quest; onToggle: (q: Quest,
           <span className="flex items-center gap-3 mt-1 font-pixel text-[16px]">
             <span className="flex items-center gap-1 text-xp"><Icon name="star" size={14} />{q.xp}</span>
             <span className="flex items-center gap-1 text-gold"><Icon name="coin" size={14} />{q.gold}</span>
+            {chain >= 2 && <span className={`flex items-center gap-0.5 ${chain >= 7 ? 'glow' : ''}`} style={{ color: chainColor }} title={`${chain} gün üst üste`}><Icon name="flame" size={14} />{chain}</span>}
           </span>
         </span>
         <span className="checkbox">{q.done && <Icon name="check" size={30} className="popin" />}</span>

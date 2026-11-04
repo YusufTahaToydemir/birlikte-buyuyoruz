@@ -6,6 +6,7 @@ import { HeroSprite, Icon, PetSprite } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Sheet, useGame } from '../game/ui'
+import { CalendarPanel } from './Calendar'
 
 const SLOTS: Array<{ slot: Slot; icon: string; kind: string }> = [
   { slot: 'weapon', icon: 'sword', kind: 'WEAPON' },
@@ -63,6 +64,8 @@ export function HeroScreen() {
       </section>
 
       <LevelRoad h={h} />
+
+      <CalendarPanel />
 
       {/* Ekipman */}
       <section className="grid grid-cols-5 gap-2" aria-label="Ekipman">

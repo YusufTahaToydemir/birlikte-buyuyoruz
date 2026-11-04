@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('./supabase', () => ({ supabase: {}, usernameToEmail: (u: string) => u }))
 const { ApiError, errorText, SHOP, levelStart, levelReward, unlocksAt, titleFor } = await import('./game')
-import sql from '../../supabase/migrations/0006_progression_games.sql?raw'
+import sql6 from '../../supabase/migrations/0006_progression_games.sql?raw'
+import sql7 from '../../supabase/migrations/0007_paket1.sql?raw'
+const sql = sql6 + sql7
 
 describe('dükkan kataloğu', () => {
   it('sunucudaki fiyat, seviye ve kademelerle aynı', () => {

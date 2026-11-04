@@ -1,7 +1,7 @@
 // Olay katmanı: seviye atlama (ödüller, unvan, açılan eşyalar), hasar, bayılma, kombo, boss, bilet parçası, rozet,
 // partnerden gelenler (alkış, şifa, altın, düello, kelime, birlikte etkinlik).
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ACHIEVEMENTS, markEventsSeen, titleFor, unlocksAt, type GameEvent } from '../lib/game'
+import { ACHIEVEMENTS, markEventsSeen, TICKET_TIERS, titleFor, unlocksAt, type GameEvent, type TicketTier } from '../lib/game'
 import { GAME_INFO } from './minigames'
 import { BossSprite, HeroSprite, Icon, PetSprite } from './Sprite'
 import { fx } from './fx'
@@ -37,6 +37,7 @@ export function EventOverlay() {
       case 'BOSS_DEFEATED': sfx.roar(); window.setTimeout(() => sfx.victory(), 400); fx.flash('rgba(255,255,255,.7)'); fx.shake('game-root', true); fx.confetti(160); navigator.vibrate?.([30, 30, 30, 30, 120]); break
       case 'TICKET': case 'TICKET_APPROVED': sfx.ticket(); fx.confetti(50); fx.ring(mid.x, mid.y, '#ffd166'); break
       case 'SHARD': sfx.shard(); fx.sparkle(mid.x, mid.y, 10, '#ffd166', 60); break
+      case 'STREAK_SAVED': sfx.heal(); fx.flash('rgba(76,201,240,.35)'); fx.ring(mid.x, mid.y, '#4cc9f0'); break
       case 'ACHIEVEMENT': sfx.ticket(); fx.flash('rgba(185,138,255,.4)'); fx.sparkle(mid.x, mid.y, 10, '#d8c4ff', 70); break
       case 'CHEER': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8); break
       case 'HEAL': sfx.heal(); fx.ring(mid.x, mid.y, '#5bd17c'); break
@@ -126,10 +127,17 @@ export function EventOverlay() {
       sub = <span className="flex items-center gap-1 text-ink">{n}/{need} · {need - n} parça daha <Icon name="ticket" size={20} /></span>
       break
     }
-    case 'TICKET':
-      art = <div className="relative"><ShardMeter n={4} need={4} size={56} /><Icon name="ticket" size={110} className="glow absolute inset-0 m-auto popin" /></div>
-      title = '+1 BİLET'; color = '#ffd166'
-      sub = <span className="flex items-center gap-1 text-ink2"><Icon name="shard" size={18} />4 parça birleşti!</span>
+    case 'TICKET': {
+      const tier = TICKET_TIERS[(d.tier as TicketTier) ?? 'GREEN'] ?? TICKET_TIERS.GREEN
+      art = <div className="relative"><ShardMeter n={4} need={4} size={56} /><Icon name="ticket" size={110} className={`glow absolute inset-0 m-auto popin tier-${String(d.tier ?? 'GREEN')}`} /></div>
+      title = `${tier.name.toLocaleUpperCase('tr-TR')} BİLET!`; color = tier.color
+      sub = <span className="flex items-center gap-1 text-ink2"><Icon name="shard" size={18} />4 parça birleşti!{d.tier === 'RED' && <span className="text-hp"> · En nadiri!</span>}</span>
+      break
+    }
+    case 'STREAK_SAVED':
+      art = <div className="relative"><Icon name="shield" size={110} className="glow" /><Icon name="flame" size={48} className="absolute inset-0 m-auto" /></div>
+      title = 'SERİ KORUNDU'; color = '#4cc9f0'
+      sub = <span className="flex items-center gap-1 text-ink">Seri Kalkanı kırıldı, <Icon name="flame" size={18} />{String(d.streak)} serin duruyor</span>
       break
     case 'ACHIEVEMENT': {
       const a = ACHIEVEMENTS.find(x => x.key === d.key)
@@ -192,11 +200,13 @@ export function EventOverlay() {
       title = 'BİRLİKTE!'; color = '#ff8ab5'
       sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{String(d.title)}</span>{reward(d.xp, d.gold)}</span>
       break
-    case 'TICKET_REQUEST':
-      art = <Icon name="ticket" size={110} className="glow" />; title = 'Bilet!'; color = '#ffd166'; rays = false
-      sub = <span className="text-ink">{cur.from} bir bilet kullanmak istiyor</span>
+    case 'TICKET_REQUEST': {
+      const tier = TICKET_TIERS[(d.tier as TicketTier) ?? 'GREEN'] ?? TICKET_TIERS.GREEN
+      art = <Icon name="ticket" size={110} className={`glow tier-${String(d.tier ?? 'GREEN')}`} />; title = `${tier.name} bilet!`; color = tier.color; rays = false
+      sub = <span className="flex flex-col items-center gap-1 text-ink"><span>{cur.from} bir bilet kullanmak istiyor</span>{d.note ? <span className="font-pixel text-gold text-lg">« {String(d.note)} »</span> : null}</span>
       action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('loot')}>Bak</button>
       break
+    }
     case 'TICKET_APPROVED':
       art = <Icon name="ticket" size={110} className="glow" />; title = 'Onaylandı!'; color = '#5bd17c'
       sub = <span className="text-ink">{cur.from} biletini onayladı</span>
