@@ -12,17 +12,19 @@ export interface Hero {
   equipped: Gear & { weapon?: number; armor?: number }
   streak: number; bestStreak: number; sound: boolean
   shards: number; lastSeen: string | null
+  skillReadyAt: string | null
 }
-export interface Partner extends Hero { todayDone: number; todayTotal: number }
+export interface Partner extends Hero { todayDone: number; todayTotal: number; todayCodes: string[] }
+export type DayEvent = 'SPIRIT_SURGE' | 'MIND_DAY' | 'BODY_DAY' | 'ORDER_DAY' | 'GOLD_RAIN' | 'TWIN' | 'BOSS_RAGE' | 'COMBO_DAY'
 export interface Quest { id: string; code: string; kind: 'DAILY' | 'SIDE'; category: Category; icon: string; title: string; xp: number; gold: number; damage: number; done: boolean }
 export interface Difficulty { n: number; name: string; mult: number; damage: number; sides: number }
 export interface GameEvent { id: string; kind: string; data: Record<string, unknown>; from: string | null; at: string }
-export interface Boss { id: string; key: string; name: string; hp: number; maxHp: number; defeated: boolean; hits: Array<{ user: string | null; kind: string; damage: number; at: string }>; byUser: Record<string, number> }
+export interface Boss { id: string; key: string; name: string; hp: number; maxHp: number; defeated: boolean; weak: Category | null; hits: Array<{ user: string | null; kind: string; damage: number; at: string }>; byUser: Record<string, number> }
 export interface Game {
   serverTime: string; today: string; weekStart: string; weekEnd: string
   config: { difficulties: Difficulty[]; cheerXP: number; cheersPerDay: number; healAmount: number; bossGold: number; comboGold: number; comboDamage: number; shardsPerTicket: number; duelRewardsPerDay: number }
   hero: Hero | null
-  day: { izin: boolean; difficulty: number } | null
+  day: { izin: boolean; difficulty: number; event: DayEvent | null } | null
   quests: Quest[]
   partner: Partner | null
   couple: { id: string; hasPartner: boolean; pendingInvite: { expiresAt: string } | null; status: string }
@@ -84,6 +86,8 @@ const ERROR_TEXT: Record<string, string> = {
   INVALID_WORD: '5 harfli bir kelime yaz.',
   NO_GUESSES_LEFT: 'Tahmin hakkın bitti, sıra eşinde.',
   MAX_HELD: 'En fazla 2 tane taşıyabilirsin.',
+  SKILL_COOLDOWN: 'Yeteneğin henüz dolmadı.',
+  SKILL_NOTHING: 'Bugün yapılacak görev kalmamış.',
 }
 export function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : e instanceof Error ? e.message : String(e)
@@ -144,6 +148,38 @@ export const markEventsSeen = (ids: string[]) => rpc<void>('mark_events_seen', {
 export const getTickets = () => rpc<{ serverTime: string; tickets: Ticket[]; redemptions: Redemption[] }>('get_tickets')
 export const requestTicket = (ticketId: string, note = '') => rpc<Redemption>('request_ticket', { p_ticket_id: ticketId, p_operation_id: crypto.randomUUID(), p_note: note || null })
 export const getCalendar = (month: string) => rpc<Calendar>('get_calendar', { p_month: month })
+export const useSkill = () => rpc<Game>('use_skill')
+export interface BestiaryEntry { key: string; name: string; weak: Category | null; faced: number; defeated: number; fastest: number | null; next: string | null }
+export const getBestiary = () => rpc<BestiaryEntry[]>('get_bestiary')
+
+/** Stat bonusu (%): √stat, en çok 20. Sunucudaki bb_stat_bonus ile aynı. */
+export const statBonus = (stat: number) => Math.min(20, Math.floor(Math.sqrt(Math.max(0, stat))))
+export const STAT_EFFECT: Record<Category, { what: string; icon: string; unit: (b: number) => string }> = {
+  BODY: { what: 'Can', icon: 'heart', unit: b => `+${2 * b} ❤` },
+  MIND: { what: 'XP', icon: 'star', unit: b => `+%${b} XP` },
+  SPIRIT: { what: 'Hasar', icon: 'sword', unit: b => `+%${b} hasar` },
+  ORDER: { what: 'Altın', icon: 'coin', unit: b => `+%${b} altın` },
+}
+
+/** Sınıf yetenekleri (haftada 1) */
+export const SKILLS: Record<HeroClass, { key: string; name: string; icon: string; desc: string; color: string }> = {
+  WARRIOR: { key: 'WAR_CRY', name: 'Savaş Çığlığı', icon: 'swords', desc: 'Bugün kalan görevler canavara 2× hasar vurur', color: '#ff6b5a' },
+  MAGE: { key: 'GREAT_SPELL', name: 'Büyük Büyü', icon: 'rune', desc: 'Bugün kalan görevler 2× XP verir', color: '#b98aff' },
+  HEALER: { key: 'GREAT_HEAL', name: 'Büyük Şifa', icon: 'heart', desc: 'İkinizin de canı tamamen dolar', color: '#5bd17c' },
+  RANGER: { key: 'SCOUT', name: 'Keşif', icon: 'target', desc: 'Bugünün sürpriz görevleri yenilenir, bir fazlası gelir', color: '#ffcc3a' },
+}
+
+/** Günün olayları: çift için ortak, sabah belli olur */
+export const DAY_EVENTS: Record<DayEvent, { name: string; icon: string; rule: string; color: string; cat?: Category; kind?: 'SIDE' }> = {
+  SPIRIT_SURGE: { name: 'Ruh Dalgası', icon: 'moon', rule: 'Ruh görevleri canavara 2× hasar', color: '#ffd75a', cat: 'SPIRIT' },
+  MIND_DAY: { name: 'Bilgelik Günü', icon: 'book', rule: 'Zekâ görevleri 2× XP', color: '#6aa8ff', cat: 'MIND' },
+  BODY_DAY: { name: 'Güç Günü', icon: 'muscle', rule: 'Güç görevleri 2× XP', color: '#ff6b5a', cat: 'BODY' },
+  ORDER_DAY: { name: 'Düzen Günü', icon: 'broom', rule: 'Düzen görevleri 2× altın', color: '#5bd17c', cat: 'ORDER' },
+  GOLD_RAIN: { name: 'Altın Yağmuru', icon: 'coin', rule: 'Sürpriz görevler 3× altın', color: '#ffcc3a', kind: 'SIDE' },
+  TWIN: { name: 'Çift Gün', icon: 'heart', rule: 'İkiniz de aynı görevi yaparsanız +5 altın', color: '#ff8ab5' },
+  BOSS_RAGE: { name: 'Canavar Öfkeli', icon: 'skull', rule: 'Görevler 1.5× hasar, kaçan günde 2× can kaybı', color: '#ff4d6d' },
+  COMBO_DAY: { name: 'Kombo Günü', icon: 'sparkle', rule: 'İkiniz de tam gün yaparsanız kombo altını 2×', color: '#b98aff' },
+}
 export const getDay = (date: string) => rpc<DayDetail>('get_day', { p_date: date })
 export const respondRedemption = (id: string, action: 'approve' | 'not_now' | 'withdraw') => rpc<Redemption>('respond_redemption', { p_id: id, p_action: action })
 
@@ -259,6 +295,9 @@ export const ACHIEVEMENTS: Array<{ key: string; name: string; icon: string }> = 
   { key: 'TOGETHER_1', name: 'Birlikte', icon: 'heart' },
   { key: 'TOGETHER_20', name: 'Can Yoldaşı', icon: 'gift' },
   { key: 'TICKET_1', name: 'İlk Bilet', icon: 'ticket' },
+  { key: 'SKILL_1', name: 'İlk Yetenek', icon: 'bolt' },
+  { key: 'SKILL_10', name: 'Yetenek Ustası', icon: 'rune' },
+  { key: 'BESTIARY', name: 'Bestiyer Tamam', icon: 'skull' },
 ]
 
 export const CAT_INFO: Record<Category, { name: string; icon: string; color: string }> = {
