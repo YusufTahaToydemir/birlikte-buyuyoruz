@@ -45,6 +45,8 @@ export const OUTFIT: Record<HeroClass, TierPal[]> = {
     W('#a9b4c2', '#76808f', '#e6edf5', '#8792a1', '#5c6573', '#3a3550', '#d8e2ee', '#3a8ef0', '#4b5263', '#353a47', '#3b4150', '#252a34'),
     W('#e0b232', '#a77d16', '#fff0a0', '#c8961e', '#8f6a10', '#5a2a1a', '#ffffff', '#e83a5a', '#6a2b2b', '#4a1d1d', '#5a2a1a', '#3a170e'),
     W('#5a2f8f', '#3c1d63', '#9468d0', '#ecc65a', '#b8922e', '#24163a', '#7ff7ff', '#7ff7ff', '#2c1d45', '#1d1230', '#24163a', '#140c22'),
+    W('#b02a3a', '#7a1a28', '#e85a6a', '#2a2a33', '#16161c', '#f0c34a', '#b8922e', '#ffb03a', '#2a1a22', '#1a0f16', '#3a1a1a', '#200c0c'),
+    W('#e8f4ff', '#a8c0e0', '#ffffff', '#ffd75a', '#d4a83a', '#3a5ad6', '#ffffff', '#7ff7ff', '#3a4a8a', '#28346a', '#3a4a8a', '#1f2850'),
   ],
   MAGE: [
     W('#3c5aa8', '#2a3f7a', '#5f7fd0', '#d8b13a', '#a8831e', '#7a2f2f', '#f0c34a', '#f5d75a', '#2a3f7a', '#1d2d58', '#3a2a1e', '#241810'),
@@ -52,6 +54,8 @@ export const OUTFIT: Record<HeroClass, TierPal[]> = {
     W('#6a3aa8', '#4b2878', '#9264d6', '#d9dce6', '#a3a8b8', '#2a1d45', '#ffffff', '#7ff7ff', '#4b2878', '#341a55', '#2a1d45', '#1a1030'),
     W('#a82f3c', '#78202a', '#d6505e', '#f0c34a', '#b8922e', '#3a1520', '#ffffff', '#fff0a0', '#78202a', '#55141c', '#3a1520', '#240c12'),
     W('#22225a', '#15153b', '#3e3e8f', '#9ff3ff', '#5fc6d6', '#0e0e26', '#ffffff', '#ffffff', '#15153b', '#0c0c26', '#0e0e26', '#06060f'),
+    W('#6a1a2a', '#45101c', '#a8304a', '#ffb03a', '#c87a1a', '#1a0c10', '#ffd75a', '#ff6a2a', '#45101c', '#2e0a12', '#1a0c10', '#0e0608'),
+    W('#1a2a6a', '#101a45', '#3a5ad6', '#ffffff', '#bfe8ff', '#0a1030', '#ffffff', '#7ff7ff', '#101a45', '#0a1030', '#0a1030', '#05081a'),
   ],
   RANGER: [
     W('#4f8a3c', '#376629', '#77b35a', '#7a5230', '#57391f', '#3d2a1c', '#d8b13a', '#d8b13a', '#5a4632', '#403223', '#4a3322', '#2e1f14'),
@@ -59,6 +63,8 @@ export const OUTFIT: Record<HeroClass, TierPal[]> = {
     W('#2f5f4f', '#1f4236', '#4f8f77', '#5f6670', '#3f454d', '#252a30', '#d8e2ee', '#7fd0ff', '#2f3540', '#20252d', '#252a30', '#16191e'),
     W('#5f7a2f', '#43571f', '#8fae4a', '#c8961e', '#8f6a10', '#3a2a10', '#fff0a0', '#ff6a3a', '#4a3a1a', '#332810', '#3a2a10', '#241a08'),
     W('#1f8f6a', '#136048', '#3fd6a0', '#2a2a3a', '#18181f', '#101018', '#7ff7ff', '#7ff7ff', '#1d2a33', '#131c22', '#101018', '#08080c'),
+    W('#7a2a1a', '#55190e', '#b8452a', '#2a2a33', '#16161c', '#1a1210', '#ffd75a', '#ff6a2a', '#3a2218', '#26150e', '#1a1210', '#0e0806'),
+    W('#d8f0ff', '#9ac0e0', '#ffffff', '#5fd3a0', '#2f9a6a', '#2a4a6a', '#ffffff', '#7ff7ff', '#2a4a6a', '#1c3448', '#2a4a6a', '#14243a'),
   ],
   HEALER: [
     W('#efe4cf', '#c9b996', '#fffaf0', '#c9a227', '#94761a', '#a07a4a', '#f0c34a', '#e86a8a', '#d9cdb4', '#b3a68a', '#8a6a4a', '#5f4730'),
@@ -66,6 +72,8 @@ export const OUTFIT: Record<HeroClass, TierPal[]> = {
     W('#eef1f6', '#c2c8d4', '#ffffff', '#b8c4d4', '#8792a1', '#5c6573', '#ffffff', '#7fd0ff', '#c2c8d4', '#9aa2b0', '#5c6573', '#3f454d'),
     W('#fff8e6', '#e6d4a6', '#ffffff', '#e8b830', '#b08414', '#a07a2a', '#ffffff', '#ff6a8a', '#e6d4a6', '#c4b07e', '#8a6a2a', '#5f4a1a'),
     W('#ffffff', '#d9d2f0', '#ffffff', '#ffd75a', '#d4a83a', '#9a7ad6', '#7ff7ff', '#7ff7ff', '#e4defa', '#bdb4e0', '#9a7ad6', '#6a50a8'),
+    W('#ffe6ea', '#e0b0bc', '#ffffff', '#c8304a', '#8a1a2e', '#a02a3a', '#ffd75a', '#ff6a8a', '#e0b0bc', '#bf8a98', '#8a1a2e', '#5a0f1e'),
+    W('#ffffff', '#e0eaff', '#ffffff', '#ffd75a', '#e0b030', '#7ab0ff', '#ffffff', '#7ff7ff', '#e8f0ff', '#c0d0f0', '#7ab0ff', '#4a80d6'),
   ],
 }
 
@@ -75,6 +83,8 @@ const WEAPON_TIERS = [
   { L: '#f7fbff', A: '#aab6c4', T: '#76808f', t: '#4f5866', G: '#b07aff', g: '#7a45d0' },
   { L: '#fff4b0', A: '#e0b030', T: '#c8961e', t: '#8f6a10', G: '#ffd75a', g: '#d0a020' },
   { L: '#e2ffff', A: '#5fd3e8', T: '#ecc65a', t: '#b8922e', G: '#7ff7ff', g: '#3fb8d6' },
+  { L: '#ffd0a0', A: '#e8452a', T: '#2a2a33', t: '#16161c', G: '#ffb03a', g: '#e8452a' },
+  { L: '#ffffff', A: '#bfe8ff', T: '#ffd75a', t: '#d4a83a', G: '#ffffff', g: '#7ff7ff' },
 ]
 const WOOD = { K: '#7a5230', k: '#57391f', W: '#f2f2f2' }
 
@@ -327,6 +337,10 @@ const HEAD_CROWN: Block[] = [[-1, 9, [
   '.tttttttttttt.',
 ]]]
 const HEAD_CROWN_PAL: Palette = { T: '#f5c94a', t: '#b8922e', G: '#7ff7ff', R: '#e83a5a' }
+const HEAD_LAUREL: Block[] = [s(3, 9, 'g.G.g...g.G.g'), s(4, 8, 'GgGgGgGYGgGgGgG'), s(5, 8, 'g.............g')]
+const HEAD_LAUREL_PAL: Palette = { G: '#7ad65a', g: '#3f9a3a', Y: '#ffd75a' }
+const HEAD_CIRCLET: Block[] = [s(2, 15, 'W'), s(3, 14, 'TWT'), s(4, 8, 'TTTTTTTCTTTTTTT'), s(5, 8, 't.............t')]
+const HEAD_CIRCLET_PAL: Palette = { T: '#f5c94a', t: '#b8922e', W: '#bff8ff', C: '#7ff7ff' }
 const HEAD_FLOWER_PAL: Palette = { g: '#5aa84a', R: '#ff6a8a', Y: '#ffd75a', P: '#b98aff' }
 
 const CAPE: Block = [19, 0, [
@@ -339,6 +353,9 @@ export const CAPES: Record<string, Palette> = {
   cape_blue: { C: '#2f5fb0', c: '#1f3f7a' },
   cape_royal: { C: '#6a2fa0', c: '#45206a' },
   cape_gold: { C: '#e0b232', c: '#a77d16' },
+  cape_green: { C: '#3f8a3a', c: '#28602a' },
+  cape_shadow: { C: '#2a2238', c: '#16121e' },
+  cape_star: { C: '#1f2f7a', c: '#141f52' },
 }
 
 // ---------------------------------------------------------------- birleştir
@@ -349,13 +366,14 @@ export function renderHero(cls: HeroClass, look: Look, gear: Gear = {}, pose: Po
   const hijab = gender === 'F' && hairStyle === 2
   const skin = SKIN[look.skin ?? 0] ?? SKIN[0]
   const hairPal = (hijab ? HIJAB : HAIR)[look.hairColor ?? 0] ?? HAIR[0]
-  const armorTier = Math.max(0, Math.min(4, gear.armor ?? 0))
-  const weaponTier = Math.max(0, Math.min(4, gear.weapon ?? 0))
+  const armorTier = Math.max(0, Math.min(6, gear.armor ?? 0))
+  const weaponTier = Math.max(0, Math.min(6, gear.weapon ?? 0))
   const outfit = OUTFIT[cls][armorTier]
   const face: Palette = { ...skin, E: '#2a1d33', w: '#ffffff', M: gender === 'F' ? '#d4566c' : '#b8505a', m: '#7a2a35', Y: hijab ? '#3a2a22' : (hairPal.h as string), U: outfit.A, P: outfit.P, p: outfit.p, O: outfit.O, o: outfit.o }
   const hp: Palette = { ...hairPal, R: '#ff6a8a' }
 
   if (gear.cape && CAPES[gear.cape]) paint(g, [CAPE], CAPES[gear.cape], OX, OY)
+  if (gear.cape === 'cape_star') paint(g, [s(21, 7, 'W'), s(24, 24, 'W'), s(27, 8, 'W'), s(29, 23, 'W'), s(22, 25, 'W'), s(26, 6, 'W')], { W: '#fff4b0' }, OX, OY)
   if (!hijab && gender === 'F' && hairStyle === 0) paint(g, HAIR_F_LONG_BACK, hp, OX, OY)
   if (cls === 'RANGER') paint(g, QUIVER, { R: '#e04a3a', W: '#f2f2f2', K: outfit.T, k: outfit.t }, OX, OY)
 
@@ -380,12 +398,14 @@ export function renderHero(cls: HeroClass, look: Look, gear: Gear = {}, pose: Po
     paint(g, HEAD_CLASS[cls], pal, OX, OY)
   } else if (gear.head === 'head_flower') paint(g, HEAD_FLOWER, HEAD_FLOWER_PAL, OX, OY)
   else if (gear.head === 'head_crown') paint(g, HEAD_CROWN, HEAD_CROWN_PAL, OX, OY)
+  else if (gear.head === 'head_laurel') paint(g, HEAD_LAUREL, HEAD_LAUREL_PAL, OX, OY)
+  else if (gear.head === 'head_circlet') paint(g, HEAD_CIRCLET, HEAD_CIRCLET_PAL, OX, OY)
 
   const wp = { ...WEAPON_TIERS[weaponTier], ...WOOD }
   if (cls === 'WARRIOR') paint(g, [SWORD], { ...wp, K: '#4a2f1c', k: '#2e1d10' }, OX, OY)
   if (cls === 'MAGE') paint(g, [STAFF], { ...wp, T: wp.T }, OX, OY)
   if (cls === 'RANGER') paint(g, [BOW], { ...wp, K: weaponTier >= 3 ? wp.A : '#8a5a32', k: wp.T }, OX, OY)
-  if (cls === 'HEALER') paint(g, [SCEPTER], { ...wp, G: ['#e86a8a', '#ff8ab0', '#7fd0ff', '#ff6a8a', '#7ff7ff'][weaponTier], g: ['#b8456a', '#d0608a', '#4fa0d6', '#c8456a', '#3fb8d6'][weaponTier] }, OX, OY)
+  if (cls === 'HEALER') paint(g, [SCEPTER], { ...wp, G: ['#e86a8a', '#ff8ab0', '#7fd0ff', '#ff6a8a', '#7ff7ff', '#ff8a3a', '#ffffff'][weaponTier], g: ['#b8456a', '#d0608a', '#4fa0d6', '#c8456a', '#3fb8d6', '#c8452a', '#7ff7ff'][weaponTier] }, OX, OY)
 
   return outline(g)
 }

@@ -1,6 +1,6 @@
 // Kahraman: büyük karakter vitrini, güç değerleri, ekipman yuvaları, rozetler.
-import { useState } from 'react'
-import { ACHIEVEMENTS, CAT_INFO, equipItem, SHOP, type Category, type Slot } from '../lib/game'
+import { useEffect, useRef, useState } from 'react'
+import { ACHIEVEMENTS, CAT_INFO, equipItem, levelReward, SHOP, titleFor, TITLES, unlocksAt, type Category, type Hero, type Slot } from '../lib/game'
 import { CLASS_INFO, type Gear } from '../game/art/hero'
 import { HeroSprite, Icon, PetSprite } from '../game/Sprite'
 import { fx } from '../game/fx'
@@ -45,8 +45,10 @@ export function HeroScreen() {
         <div className="absolute inset-[-60%] rays opacity-30 pointer-events-none" />
         <div className="relative flex flex-col items-center pt-3 pb-2">
           <div className="font-pixel text-2xl">{h.name}</div>
-          <div className="font-pixel text-[15px] flex items-center gap-2" style={{ color: info.color }}>
+          <div className="font-pixel text-[17px] flex items-center gap-2" style={{ color: info.color }}>
             {info.name}<span className="text-ink2">·</span><span className="text-magic">Seviye {h.level}</span>
+          </div>
+          <div className="font-pixel text-lg" style={{ color: titleFor(h.level).color }}>« {titleFor(h.level).name} »
           </div>
           <button className="relative mt-1" onClick={tap} aria-label="Kahraman">
             <HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={5} pose={pose} />
@@ -60,6 +62,8 @@ export function HeroScreen() {
         </div>
       </section>
 
+      <LevelRoad h={h} />
+
       {/* Ekipman */}
       <section className="grid grid-cols-5 gap-2" aria-label="Ekipman">
         {SLOTS.map(s => {
@@ -67,7 +71,7 @@ export function HeroScreen() {
           return (
             <button key={s.slot} className={`panel aspect-square grid place-items-center relative ${eq ? '!bg-panel2' : ''}`} onClick={() => { sfx.click(); setSlot(s.slot) }} aria-label={s.slot}>
               {s.slot === 'pet' && h.equipped.pet ? <PetSprite petKey={h.equipped.pet} scale={2.4} className="!animate-none" /> : <Icon name={s.icon} size={36} className={eq ? '' : 'opacity-35'} />}
-              {(s.slot === 'weapon' || s.slot === 'armor') && tier(s.slot) > 0 && <span className="absolute bottom-0.5 right-1 font-pixel text-[12px] text-gold">+{tier(s.slot)}</span>}
+              {(s.slot === 'weapon' || s.slot === 'armor') && tier(s.slot) > 0 && <span className="absolute bottom-0.5 right-1 font-pixel text-[14px] text-gold">+{tier(s.slot)}</span>}
             </button>
           )
         })}
@@ -78,7 +82,7 @@ export function HeroScreen() {
         {CATS.map(c => (
           <div key={c} className="flex items-center gap-2">
             <Icon name={CAT_INFO[c].icon} size={26} />
-            <span className="font-pixel w-[58px] text-[15px]">{CAT_INFO[c].name}</span>
+            <span className="font-pixel w-[58px] text-[17px]">{CAT_INFO[c].name}</span>
             <Bar value={h.stats[c] ?? 0} max={maxStat} color={CAT_INFO[c].color} label={h.stats[c] ?? 0} className="flex-1" h={20} />
           </div>
         ))}
@@ -119,7 +123,7 @@ export function HeroScreen() {
             <button key={o.key} className={`panel p-1 flex flex-col items-center ${o.active ? '!border-gold' : ''}`} onClick={() => !o.active && void equip(slot, o.value)}>
               {slot === 'pet' ? (o.value ? <PetSprite petKey={String(o.value)} scale={3} /> : <Icon name="pet" size={48} className="opacity-30" />)
                 : <HeroSprite cls={h.class} look={h.look} gear={o.gear} scale={2} animate={false} />}
-              <span className="font-pixel text-[12px] text-center leading-tight mt-1">{o.label}</span>
+              <span className="font-pixel text-[14px] text-center leading-tight mt-1">{o.label}</span>
               {o.active && <Icon name="check" size={18} />}
             </button>
           ))}
@@ -128,4 +132,43 @@ export function HeroScreen() {
       </div>
     )
   }
+}
+
+/** Seviye yolu: sonraki seviyelerin ödülleri (altın, iksir, unvan, açılan eşyalar) */
+function LevelRoad({ h }: { h: Hero }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => { ref.current?.scrollTo({ left: 0 }) }, [h.level])
+  const pct = Math.max(0, Math.min(1, (h.xp - h.levelStart) / Math.max(1, h.levelEnd - h.levelStart)))
+  const levels = Array.from({ length: 15 }, (_, i) => h.level + 1 + i)
+  const nextTitle = TITLES.find(t => t.level > h.level)
+  return (
+    <section className="panel p-3 space-y-2" aria-label="Seviye yolu">
+      <div className="flex items-center justify-between">
+        <span className="font-pixel text-xl flex items-center gap-2"><Icon name="stairs" size={24} />Seviye yolu</span>
+        {nextTitle && <span className="font-pixel text-[15px] text-ink2">Sv {nextTitle.level}: <span style={{ color: nextTitle.color }}>{nextTitle.name}</span></span>}
+      </div>
+      <div ref={ref} className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+        {levels.map((l, i) => {
+          const r = levelReward(l)
+          const u = unlocksAt(l)
+          const t = TITLES.find(x => x.level === l)
+          const big = l % 5 === 0
+          return (
+            <div key={l} className={`snap-start shrink-0 w-[92px] panel-dark p-1.5 flex flex-col items-center gap-1 relative ${i === 0 ? '!border-gold' : ''} ${big ? '!bg-[#2f2450]' : ''}`}>
+              {i === 0 && <div className="absolute left-0 bottom-0 h-[4px] bg-xp" style={{ width: `${pct * 100}%` }} />}
+              <span className="font-pixel text-[15px] text-magic">Sv {l}</span>
+              <div className="h-[44px] grid place-items-center">
+                {u.length > 0 ? (u[0].kind === 'PET' ? <PetSprite petKey={u[0].key} scale={2.4} className="!animate-none" /> : <HeroSprite cls={h.class} look={h.look} gear={{ ...h.equipped, ...(u[0].kind === 'WEAPON' ? { weapon: u[0].tier } : u[0].kind === 'ARMOR' ? { armor: u[0].tier } : u[0].kind === 'HEAD' ? { head: u[0].key } : u[0].kind === 'CAPE' ? { cape: u[0].key } : {}) }} scale={1} animate={false} />)
+                  : big ? <Icon name="chest" size={40} className={i < 5 ? 'glow' : ''} /> : <Icon name="coin" size={30} />}
+              </div>
+              <span className="font-pixel text-[15px] text-gold flex items-center gap-0.5"><Icon name="coin" size={14} />{r.gold}</span>
+              {r.potion && <Icon name={r.potion === 'potion_big' ? 'potion_big' : 'potion'} size={18} />}
+              {t && <span className="font-pixel text-[13px] leading-none text-center" style={{ color: t.color }}>{t.name}</span>}
+              {u.length > 1 && <span className="font-pixel text-[13px] text-ink2">+{u.length - 1} eşya</span>}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
 }

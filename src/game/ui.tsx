@@ -40,7 +40,7 @@ export function Sheet({ open, onClose, children, title }: { open: boolean; onClo
       <div className="relative w-full max-w-[520px] max-h-[88dvh] overflow-y-auto panel rounded-b-none slideup p-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between mb-3">
           <div className="font-pixel text-xl">{title}</div>
-          <button className="pbtn pbtn-dark !min-h-[40px] !px-3" onClick={() => { sfx.click(); onClose() }} aria-label="Kapat">✕</button>
+          <button className="pbtn pbtn-dark !min-h-[40px] !px-3" onClick={() => { sfx.close(); onClose() }} aria-label="Kapat">✕</button>
         </div>
         {children}
       </div>
@@ -90,7 +90,7 @@ export interface GameCtx {
   go: (tab: TabId) => void
   openSettings: () => void
 }
-export type TabId = 'quest' | 'arena' | 'hero' | 'loot'
+export type TabId = 'quest' | 'arena' | 'games' | 'hero' | 'loot'
 export const GameContext = createContext<GameCtx | null>(null)
 export const useGame = () => {
   const c = useContext(GameContext)

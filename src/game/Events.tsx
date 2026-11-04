@@ -1,10 +1,15 @@
-// Olay katmanı: seviye atlama, hasar, bayılma, kombo, boss yenilgisi, bilet, rozet, partnerden gelenler.
+// Olay katmanı: seviye atlama (ödüller, unvan, açılan eşyalar), hasar, bayılma, kombo, boss, bilet parçası, rozet,
+// partnerden gelenler (alkış, şifa, altın, düello, kelime, birlikte etkinlik).
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ACHIEVEMENTS, markEventsSeen, type GameEvent } from '../lib/game'
-import { BossSprite, HeroSprite, Icon } from './Sprite'
+import { ACHIEVEMENTS, markEventsSeen, titleFor, unlocksAt, type GameEvent } from '../lib/game'
+import { GAME_INFO } from './minigames'
+import { BossSprite, HeroSprite, Icon, PetSprite } from './Sprite'
 import { fx } from './fx'
 import { sfx } from './sfx'
-import { useGame } from './ui'
+import { toast, useGame } from './ui'
+
+/** Pencere açmadan yalnızca kısa bildirim gösterilen olaylar */
+const QUIET = new Set(['WORD_GUESS'])
 
 export function EventOverlay() {
   const { game, go } = useGame()
@@ -15,24 +20,32 @@ export function EventOverlay() {
     const fresh = game.events.filter(e => !seen.current.has(e.id))
     if (fresh.length === 0) return
     fresh.forEach(e => seen.current.add(e.id))
-    setQueue(q => [...q, ...fresh])
+    fresh.filter(e => QUIET.has(e.kind)).forEach(e => { sfx.key(); toast(`${e.from ?? ''} bir kelime tahmin etti`) })
+    setQueue(q => [...q, ...fresh.filter(e => !QUIET.has(e.kind))])
     void markEventsSeen(fresh.map(e => e.id)).catch(() => { /* bir sonraki yüklemede tekrar denenir */ })
   }, [game.events])
 
   const cur = queue[0]
   useEffect(() => {
     if (!cur) return
+    const mid = { x: window.innerWidth / 2, y: window.innerHeight * 0.42 }
     switch (cur.kind) {
-      case 'LEVEL_UP': sfx.levelUp(); fx.flash('rgba(255,215,90,.5)'); fx.confetti(90); break
-      case 'DAY_DAMAGE': sfx.hurt(); fx.flash('rgba(255,40,60,.45)'); fx.shake(); navigator.vibrate?.([60, 40, 60]); break
-      case 'FAINT': sfx.hurt(); fx.flash('rgba(0,0,0,.6)'); fx.shake(); break
-      case 'COMBO': sfx.victory(); fx.confetti(60); break
-      case 'BOSS_DEFEATED': sfx.victory(); fx.flash('rgba(255,255,255,.7)'); fx.confetti(140); navigator.vibrate?.([30, 30, 30, 30, 120]); break
-      case 'TICKET': case 'TICKET_APPROVED': sfx.ticket(); fx.confetti(40); break
-      case 'ACHIEVEMENT': sfx.ticket(); fx.flash('rgba(185,138,255,.4)'); break
-      case 'CHEER': sfx.cheer(); break
-      case 'HEAL': sfx.heal(); break
+      case 'LEVEL_UP': sfx.levelUp(); fx.flash('rgba(255,215,90,.5)'); fx.confetti(110); fx.ring(mid.x, mid.y, '#ffd75a'); window.setTimeout(() => fx.sparkle(mid.x, mid.y, 14, '#fff4b0', 90), 300); navigator.vibrate?.([20, 40, 20, 40, 80]); break
+      case 'DAY_DAMAGE': sfx.hurt(); fx.flash('rgba(255,40,60,.45)'); fx.shake('game-root', true); navigator.vibrate?.([60, 40, 60]); break
+      case 'FAINT': sfx.hurt(); fx.flash('rgba(0,0,0,.6)'); fx.shake('game-root', true); break
+      case 'COMBO': sfx.victory(); fx.confetti(70); fx.ring(mid.x, mid.y, '#5bd17c'); break
+      case 'BOSS_DEFEATED': sfx.roar(); window.setTimeout(() => sfx.victory(), 400); fx.flash('rgba(255,255,255,.7)'); fx.shake('game-root', true); fx.confetti(160); navigator.vibrate?.([30, 30, 30, 30, 120]); break
+      case 'TICKET': case 'TICKET_APPROVED': sfx.ticket(); fx.confetti(50); fx.ring(mid.x, mid.y, '#ffd166'); break
+      case 'SHARD': sfx.shard(); fx.sparkle(mid.x, mid.y, 10, '#ffd166', 60); break
+      case 'ACHIEVEMENT': sfx.ticket(); fx.flash('rgba(185,138,255,.4)'); fx.sparkle(mid.x, mid.y, 10, '#d8c4ff', 70); break
+      case 'CHEER': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8); break
+      case 'HEAL': sfx.heal(); fx.ring(mid.x, mid.y, '#5bd17c'); break
       case 'GIFT': sfx.coin(); break
+      case 'DUEL_INVITE': sfx.roar(); fx.shake(); break
+      case 'DUEL_RESULT': if (cur.data.result === 'WIN') { sfx.victory(); fx.confetti(80) } else if (cur.data.result === 'LOSE') sfx.hurt(); else sfx.cheer(); break
+      case 'WORD_SOLVED': case 'TOGETHER_DONE': sfx.victory(); fx.confetti(80); break
+      case 'WORD_FAILED': sfx.undo(); break
+      case 'TOGETHER_REQUEST': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8, '#ff8ab5'); break
       default: sfx.click()
     }
   }, [cur])
@@ -41,14 +54,41 @@ export function EventOverlay() {
   const h = game.hero!
   const d = cur.data as Record<string, number | string>
   const next = () => { sfx.click(); setQueue(q => q.slice(1)) }
+  const goTo = (t: 'games' | 'loot') => { sfx.tab(); setQueue(q => q.slice(1)); go(t) }
 
   let art: ReactNode = null, title: ReactNode = null, sub: ReactNode = null, color = '#ffcc3a', rays = true
   let action: ReactNode = null
+  const reward = (xp?: number | string, gold?: number | string) => (
+    <span className="flex items-center gap-3">
+      {xp !== undefined && <span className="flex items-center gap-1 text-xp"><Icon name="star" size={22} />+{xp}</span>}
+      {gold !== undefined && <span className="flex items-center gap-1 text-gold"><Icon name="coin" size={22} />+{gold}</span>}
+    </span>
+  )
   switch (cur.kind) {
-    case 'LEVEL_UP':
-      art = <HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={4} pose="joy" />
-      title = `SEVİYE ${d.level}!`; sub = <span className="flex items-center gap-1 text-hp"><Icon name="heart" size={20} />Can doldu</span>
+    case 'LEVEL_UP': {
+      const lvl = Number(d.level)
+      const t = titleFor(lvl), newTitle = t.level === lvl
+      const unlocks = unlocksAt(lvl)
+      art = <div className="jump"><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={4} pose="joy" /></div>
+      title = `SEVİYE ${lvl}!`
+      sub = (
+        <span className="flex flex-col items-center gap-2">
+          {newTitle && <span className="stamp text-2xl" style={{ color: t.color }}>« {t.name} »</span>}
+          <span className="flex items-center gap-3 flex-wrap justify-center">
+            {d.gold !== undefined && <span className="panel-dark px-2 py-1 flex items-center gap-1 text-gold popin"><Icon name="coin" size={22} />+{d.gold}</span>}
+            {d.potion && <span className="panel-dark px-2 py-1 flex items-center gap-1 text-hp popin" style={{ animationDelay: '150ms' }}><Icon name={String(d.potion) === 'potion_big' ? 'potion_big' : 'potion'} size={22} />+1</span>}
+            <span className="panel-dark px-2 py-1 flex items-center gap-1 text-hp popin" style={{ animationDelay: '300ms' }}><Icon name="heart" size={20} />Dolu</span>
+          </span>
+          {unlocks.length > 0 && (
+            <span className="flex items-center gap-2 text-ink2 text-[16px]"><Icon name="lock" size={16} className="grayscale" />→
+              {unlocks.map(u => u.kind === 'PET' ? <PetSprite key={u.key} petKey={u.key} scale={1.6} className="!animate-none" /> : <HeroSprite key={u.key} cls={h.class} look={h.look} gear={{ ...h.equipped, ...(u.kind === 'WEAPON' ? { weapon: u.tier } : u.kind === 'ARMOR' ? { armor: u.tier } : u.kind === 'HEAD' ? { head: u.key } : u.kind === 'CAPE' ? { cape: u.key } : {}) }} scale={1.1} animate={false} />)}
+            </span>
+          )}
+        </span>
+      )
+      if (unlocks.length > 0) action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('loot')}><Icon name="bag" size={20} />Dükkan</button>
       break
+    }
     case 'DAY_DAMAGE':
       art = <HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={4} pose="hurt" className="hero-hurt" />
       title = <span className="text-hp">-{d.hp} ❤</span>; color = '#ff4d6d'; rays = false
@@ -62,7 +102,7 @@ export function EventOverlay() {
     case 'COMBO':
       art = (
         <div className="flex items-end gap-2">
-          <HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={2.5} pose="joy" />
+          <div className="jump"><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={2.5} pose="joy" /></div>
           <Icon name="heart" size={40} className="glow mb-10" />
           {game.partner && <div style={{ transform: 'scaleX(-1)' }}><HeroSprite cls={game.partner.class} look={game.partner.look} gear={game.partner.equipped} scale={2.5} pose="joy" /></div>}
         </div>
@@ -75,36 +115,87 @@ export function EventOverlay() {
       title = 'ZAFER!'; sub = (
         <span className="flex flex-col items-center gap-1">
           <span className="text-ink">{String(d.name ?? '')}</span>
-          <span className="flex items-center gap-3"><span className="flex items-center gap-1 text-gold"><Icon name="coin" size={22} />+{d.gold}</span><span className="flex items-center gap-1 text-ticket"><Icon name="ticket" size={22} />+1</span></span>
+          <span className="flex items-center gap-3"><span className="flex items-center gap-1 text-gold"><Icon name="coin" size={22} />+{d.gold}</span><span className="flex items-center gap-1 text-ticket"><Icon name="shard" size={22} />+1</span></span>
         </span>
       )
       break
+    case 'SHARD': {
+      const n = Number(d.shards), need = Number(d.need ?? 4)
+      art = <ShardMeter n={n} need={need} size={64} />
+      title = 'Bilet parçası!'; color = '#ffd166'
+      sub = <span className="flex items-center gap-1 text-ink">{n}/{need} · {need - n} parça daha <Icon name="ticket" size={20} /></span>
+      break
+    }
     case 'TICKET':
-      art = <Icon name="ticket" size={120} className="glow" />; title = '+1 BİLET'; color = '#ffd166'
-      sub = <span className="flex items-center gap-1 text-ink2"><Icon name="check" size={18} />Harika hafta!</span>
+      art = <div className="relative"><ShardMeter n={4} need={4} size={56} /><Icon name="ticket" size={110} className="glow absolute inset-0 m-auto popin" /></div>
+      title = '+1 BİLET'; color = '#ffd166'
+      sub = <span className="flex items-center gap-1 text-ink2"><Icon name="shard" size={18} />4 parça birleşti!</span>
       break
     case 'ACHIEVEMENT': {
       const a = ACHIEVEMENTS.find(x => x.key === d.key)
-      art = <div className="panel-dark p-4"><Icon name={a?.icon ?? 'trophy'} size={96} className="glow" /></div>
+      art = <div className="panel-dark p-4 popin"><Icon name={a?.icon ?? 'trophy'} size={96} className="glow" /></div>
       title = 'YENİ ROZET'; sub = <span className="text-ink">{a?.name ?? String(d.key)}</span>; color = '#b98aff'
       break
     }
     case 'CHEER':
-      art = <Icon name="clap" size={110} className="pop" />; title = `+${d.xp} XP`; color = '#4cc9f0'
+      art = <Icon name="clap" size={110} className="pop wiggle" />; title = `+${d.xp} XP`; color = '#4cc9f0'
       sub = <span className="text-ink">{cur.from} seni alkışladı!</span>
       break
     case 'HEAL':
-      art = <Icon name="heart" size={110} className="glow" />; title = <span className="text-ok">+{d.hp} ❤</span>; color = '#5bd17c'
+      art = <Icon name="heart" size={110} className="glow bob" />; title = <span className="text-ok">+{d.hp} ❤</span>; color = '#5bd17c'
       sub = <span className="text-ink">{cur.from} seni iyileştirdi</span>
       break
     case 'GIFT':
       art = <Icon name="gift" size={110} className="pop" />; title = `+${d.gold}`
       sub = <span className="text-ink">{cur.from} altın gönderdi</span>
       break
+    case 'DUEL_INVITE': {
+      const gi = GAME_INFO[String(d.game) as keyof typeof GAME_INFO]
+      art = <div className="flex items-end gap-3"><Icon name="swords" size={64} className="wiggle" /><Icon name={gi?.icon ?? 'gamepad'} size={90} className="bob" /></div>
+      title = 'DÜELLO!'; color = '#ff4d6d'
+      sub = <span className="text-ink">{cur.from} · {gi?.name}</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('games')}><Icon name="swords" size={20} />Oyna</button>
+      break
+    }
+    case 'DUEL_RESULT': {
+      const r = String(d.result)
+      const gi = GAME_INFO[String(d.game) as keyof typeof GAME_INFO]
+      art = <div className={r === 'WIN' ? 'jump' : ''}><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={3.5} pose={r === 'WIN' ? 'joy' : r === 'LOSE' ? 'hurt' : undefined} /></div>
+      title = r === 'WIN' ? 'KAZANDIN!' : r === 'LOSE' ? 'Kaybettin' : 'Berabere'; color = r === 'WIN' ? '#ffcc3a' : r === 'LOSE' ? '#ff4d6d' : '#4cc9f0'; rays = r === 'WIN'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink2 flex items-center gap-1"><Icon name={gi?.icon ?? 'gamepad'} size={20} />{gi?.name}</span><span className="text-3xl"><span className="text-magic">{d.me}</span> – <span className="text-gold">{d.them}</span></span></span>
+      break
+    }
+    case 'WORD_SOLVED':
+      art = <div className="flex gap-1">{[...String(d.word)].map((c, i) => <span key={i} className="w-12 h-12 grid place-items-center border-[3px] border-edge rounded-[4px] bg-[#4cbf6a] font-pixel text-3xl tile-flip" style={{ animationDelay: `${i * 90}ms` }}>{c}</span>)}</div>
+      title = 'ÇÖZÜLDÜ!'; color = '#5bd17c'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{cur.from} kelimeyi buldu ({d.tries}. tahmin)</span>{reward(d.xp, d.gold)}</span>
+      break
+    case 'WORD_FAILED':
+      art = <div className="flex gap-1">{[...String(d.word)].map((c, i) => <span key={i} className="w-12 h-12 grid place-items-center border-[3px] border-edge rounded-[4px] bg-[#3e3658] font-pixel text-3xl">{c}</span>)}</div>
+      title = 'Olmadı…'; color = '#ff4d6d'; rays = false
+      sub = <span className="text-ink">Yarın yeni kelime!</span>
+      break
+    case 'TOGETHER_REQUEST':
+      art = <div className="flex items-end gap-2"><Icon name={String(d.icon ?? 'heart')} size={90} className="bob" /><Icon name="heart" size={40} className="glow" /></div>
+      title = 'Birlikte!'; color = '#ff8ab5'
+      sub = <span className="text-ink">{cur.from}: “{String(d.title)}” yaptık mı?</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('games')}><Icon name="check" size={20} />Bak</button>
+      break
+    case 'TOGETHER_DONE':
+      art = (
+        <div className="flex items-end gap-2">
+          <div className="jump"><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={2.4} pose="joy" /></div>
+          <Icon name={String(d.icon ?? 'heart')} size={48} className="glow mb-8" />
+          {game.partner && <div style={{ transform: 'scaleX(-1)' }}><HeroSprite cls={game.partner.class} look={game.partner.look} gear={game.partner.equipped} scale={2.4} pose="joy" /></div>}
+        </div>
+      )
+      title = 'BİRLİKTE!'; color = '#ff8ab5'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{String(d.title)}</span>{reward(d.xp, d.gold)}</span>
+      break
     case 'TICKET_REQUEST':
       art = <Icon name="ticket" size={110} className="glow" />; title = 'Bilet!'; color = '#ffd166'; rays = false
       sub = <span className="text-ink">{cur.from} bir bilet kullanmak istiyor</span>
-      action = <button className="pbtn pbtn-gold flex-1" onClick={() => { setQueue(q => q.slice(1)); go('loot') }}>Bak</button>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('loot')}>Bak</button>
       break
     case 'TICKET_APPROVED':
       art = <Icon name="ticket" size={110} className="glow" />; title = 'Onaylandı!'; color = '#5bd17c'
@@ -117,16 +208,29 @@ export function EventOverlay() {
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center p-6" role="dialog" aria-modal="true" onClick={next}>
       <div className="absolute inset-0 bg-black/70" />
-      <div className="relative w-full max-w-[360px] panel dropin overflow-hidden text-center p-5 pt-6" onClick={e => e.stopPropagation()}>
+      <div className="relative w-full max-w-[380px] panel dropin overflow-hidden text-center p-5 pt-6" onClick={e => e.stopPropagation()}>
         {rays && <div className="absolute inset-[-60%] rays opacity-50 pointer-events-none" />}
         <div className="relative flex justify-center items-end min-h-[150px]">{art}</div>
         <div className="relative font-pixel text-4xl mt-3 drop-shadow-[0_3px_0_#000]" style={{ color }}>{title}</div>
-        {sub && <div className="relative font-pixel text-lg mt-2 flex justify-center">{sub}</div>}
+        {sub && <div className="relative font-pixel text-xl mt-2 flex justify-center">{sub}</div>}
         <div className="relative flex gap-2 mt-5">
           {action}
           <button className="pbtn pbtn-dark flex-1" onClick={next} autoFocus>Tamam{queue.length > 1 ? ` (${queue.length - 1})` : ''}</button>
         </div>
       </div>
     </div>
+  )
+}
+
+/** 4 parçalı bilet göstergesi */
+export function ShardMeter({ n, need = 4, size = 40 }: { n: number; need?: number; size?: number }) {
+  return (
+    <span className="inline-grid grid-cols-2 gap-1" aria-label={`${n}/${need} parça`}>
+      {Array.from({ length: need }, (_, i) => (
+        <span key={i} className={i < n ? (i === n - 1 ? 'popin' : '') : 'opacity-25 grayscale'} style={{ transform: `rotate(${i * 90}deg)` }}>
+          <Icon name="shard" size={size} />
+        </span>
+      ))}
+    </span>
   )
 }

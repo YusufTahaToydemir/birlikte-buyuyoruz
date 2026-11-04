@@ -62,7 +62,7 @@ export function CreateHero({ onDone }: { onDone: (g: Game) => void }) {
                   {sel && <div className="absolute inset-[-60%] rays opacity-30" />}
                   <div className="relative"><HeroSprite cls={c} look={look} scale={3} pose={sel ? 'joy' : undefined} /></div>
                   <span className="relative font-pixel text-xl" style={{ color: info.color }}>{info.name}</span>
-                  <span className="relative flex items-center gap-1 text-[12px] text-ink2 text-center leading-tight min-h-[30px]"><Icon name={CAT_INFO[info.stat as Category].icon} size={16} />{CLASS_PERK[c]}</span>
+                  <span className="relative flex items-center gap-1 text-[14px] text-ink2 text-center leading-tight min-h-[30px]"><Icon name={CAT_INFO[info.stat as Category].icon} size={16} />{CLASS_PERK[c]}</span>
                 </button>
               )
             })}
@@ -151,7 +151,7 @@ export function DifficultyPicker({ value, onChange }: { value: number; onChange:
               <span className={`font-pixel text-lg ${sel ? 'text-gold' : ''}`}>{d.name}</span>
             </div>
             <Stars n={d.n} size={11} />
-            <div className="flex items-center gap-2 font-pixel text-[13px]">
+            <div className="flex items-center gap-2 font-pixel text-[15px]">
               <span className="text-gold flex items-center gap-0.5"><Icon name="coin" size={13} />×{d.mult}</span>
               <span className="text-hp flex items-center gap-0.5"><Icon name="heart" size={13} />-{d.damage}</span>
             </div>

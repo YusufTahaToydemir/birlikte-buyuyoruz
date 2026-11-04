@@ -1,7 +1,7 @@
 // Macera: sahnede kahraman ve haftanın canavarı; görevler tek dokunuşla yapılır.
 import { useRef, useState } from 'react'
 import { completeQuest, setIzin, drinkPotion, CAT_INFO, type Quest } from '../lib/game'
-import { BossSprite, HeroSprite, Icon, PetSprite, SceneBg } from '../game/Sprite'
+import { BossSprite, HeroSprite, Icon, PetSprite, SceneAmbient, SceneBg } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Segments, Stars, toastError, useGame } from '../game/ui'
@@ -33,7 +33,7 @@ export function Adventure() {
     if (next) {
       sfx.quest(); sfx.coin()
       navigator.vibrate?.(15)
-      fx.burst(at.x, at.y, '#5bd17c')
+      fx.burst(at.x, at.y, '#5bd17c', 14, 52); fx.sparkle(at.x, at.y, 5, '#c8ffd8', 30)
       fx.float(`+${q.xp} XP`, at.x - 30, at.y - 6, '#4cc9f0')
       fx.float(`+${q.gold}`, at.x + 24, at.y - 6, '#ffcc3a')
       fx.fly(at.x, at.y, 'hud-gold', Math.min(6, Math.max(2, Math.round(q.gold / 3))), 'coin')
@@ -44,11 +44,11 @@ export function Adventure() {
           sfx.hit(); play('boss-hit', setBossFx)
           const b = fx.fromEl(bossRef.current)
           fx.float(`-${q.damage}`, b.x, b.y - 30, '#ff4d6d', true)
-          fx.burst(b.x, b.y, '#ffffff')
+          fx.burst(b.x, b.y, '#ffffff', 14, 56); fx.ring(b.x, b.y, '#ffd75a'); fx.shake('quest-scene')
         }, 220)
       }
       const willFinish = q.kind === 'DAILY' && doneDaily + 1 === daily.length
-      if (willFinish) window.setTimeout(() => { sfx.victory(); fx.confetti(70); fx.float('GÜN TAMAM!', window.innerWidth / 2, window.innerHeight * 0.4, '#ffcc3a', true) }, 500)
+      if (willFinish) window.setTimeout(() => { sfx.victory(); fx.confetti(90); fx.flash('rgba(255,215,90,.35)'); fx.ring(window.innerWidth / 2, window.innerHeight * 0.4, '#ffd75a'); fx.float('GÜN TAMAM!', window.innerWidth / 2, window.innerHeight * 0.4, '#ffcc3a', true) }, 500)
     } else sfx.undo()
     try {
       const r = await completeQuest(q.id, next)
@@ -73,14 +73,15 @@ export function Adventure() {
   return (
     <div className="space-y-3">
       {/* Sahne */}
-      <section className="panel overflow-hidden relative h-[200px]" aria-label="Macera sahnesi">
+      <section id="quest-scene" className="panel overflow-hidden relative h-[210px]" aria-label="Macera sahnesi">
         <SceneBg className="absolute inset-0" seed={hero.level} />
+        <SceneAmbient />
         {izin && <div className="absolute inset-0 bg-[#3a6ad0]/25" />}
         <div className="absolute top-2 left-2 flex gap-1.5">
-          <div className="panel-dark flex items-center gap-1 px-2 py-1 font-pixel text-[15px]" title="Seri">
+          <div className="panel-dark flex items-center gap-1 px-2 py-1 font-pixel text-[17px]" title="Seri">
             <Icon name="flame" size={18} />{hero.streak}
           </div>
-          {izin && <div className="panel-dark flex items-center gap-1 px-2 py-1 font-pixel text-[13px] text-xp"><Icon name="shield" size={16} />İzin</div>}
+          {izin && <div className="panel-dark flex items-center gap-1 px-2 py-1 font-pixel text-[15px] text-xp"><Icon name="shield" size={16} />İzin</div>}
         </div>
         <div className="absolute top-2 right-2 panel-dark px-2 py-1"><Stars n={game.day?.difficulty ?? hero.difficulty} size={12} /></div>
         <div className={`absolute left-[8%] bottom-[10px] ${heroFx}`}>
@@ -94,7 +95,7 @@ export function Adventure() {
             ) : (
               <>
                 <Bar value={boss.hp} max={boss.maxHp} color="#ff4d6d" className="w-[86px] mb-1" h={12} />
-                <div ref={bossRef} className={bossFx}><BossSprite bossKey={boss.key} scale={1.8} className="boss-idle" /></div>
+                <div ref={bossRef} className={bossFx}><BossSprite bossKey={boss.key} scale={1.8} className={boss.hp < boss.maxHp * 0.25 ? 'boss-idle boss-angry' : 'boss-idle'} /></div>
               </>
             )}
           </button>
@@ -109,7 +110,7 @@ export function Adventure() {
         </div>
         {hero.hp < hero.maxHp && potions > 0 && (
           <button className="pbtn pbtn-red !px-2.5 !min-h-[52px]" onClick={() => void drink()} aria-label="İksir iç">
-            <Icon name="potion" size={26} /><span className="text-[14px]">{potions}</span>
+            <Icon name="potion" size={26} /><span className="text-[16px]">{potions}</span>
           </button>
         )}
         <button className={`pbtn ${izin ? 'pbtn-blue' : 'pbtn-dark'} !px-3 !min-h-[52px]`} onClick={() => void toggleIzin()} aria-pressed={izin} aria-label="İzinli gün">
@@ -155,12 +156,13 @@ function QuestCard({ q, onToggle, busy, side }: { q: Quest; onToggle: (q: Quest,
         <span className={`panel-dark w-[52px] h-[52px] grid place-items-center shrink-0 ${q.done ? 'opacity-60' : ''}`}><Icon name={q.icon} size={38} /></span>
         <span className="flex-1 min-w-0">
           <span className={`block font-pixel text-[18px] leading-tight ${q.done ? 'text-ink2 line-through decoration-2' : ''}`}>{q.title}</span>
-          <span className="flex items-center gap-3 mt-1 font-pixel text-[14px]">
+          <span className="flex items-center gap-3 mt-1 font-pixel text-[16px]">
             <span className="flex items-center gap-1 text-xp"><Icon name="star" size={14} />{q.xp}</span>
             <span className="flex items-center gap-1 text-gold"><Icon name="coin" size={14} />{q.gold}</span>
           </span>
         </span>
-        <span className="checkbox">{q.done && <Icon name="check" size={30} />}</span>
+        <span className="checkbox">{q.done && <Icon name="check" size={30} className="popin" />}</span>
+        {q.done && <span className="absolute inset-0 overflow-hidden rounded-[4px] pointer-events-none"><span className="shine" /></span>}
       </button>
     </li>
   )

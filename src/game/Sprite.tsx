@@ -56,3 +56,32 @@ export function SceneBg({ className = '', seed = 7 }: { className?: string; seed
   useEffect(() => { if (ref.current) drawScene(ref.current, 128, 72, timeOfDay(), seed) }, [seed])
   return <canvas ref={ref} className={`px w-full h-full ${className}`} aria-hidden="true" />
 }
+
+/** Sahne canlılığı: gündüz süzülen bulutlar, gece ateş böcekleri ve yıldızlar */
+export function SceneAmbient() {
+  const tod = timeOfDay()
+  if (tod === 'night') return (
+    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+      {[[12, 14], [30, 8], [55, 18], [78, 10], [90, 24], [42, 30]].map(([x, y], i) => <span key={'s' + i} className="twinkle" style={{ left: x + '%', top: y + '%', animationDelay: i * 0.4 + 's' }} />)}
+      {[[18, 70], [36, 78], [62, 66], [84, 74]].map(([x, y], i) => <span key={'f' + i} className="firefly" style={{ left: x + '%', top: y + '%', animationDelay: i * 0.8 + 's' }} />)}
+    </div>
+  )
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {[{ top: 10, dur: 70, delay: -10, s: 1 }, { top: 26, dur: 95, delay: -60, s: 0.7 }, { top: 4, dur: 120, delay: -90, s: 0.55 }].map((c, i) => (
+        <div key={i} className="cloud" style={{ top: c.top + '%', animationDuration: c.dur + 's', animationDelay: c.delay + 's', opacity: tod === 'day' ? 0.9 : 0.6 }}>
+          <PixelCloud scale={c.s} tint={tod === 'dusk' ? '#ffd0b8' : tod === 'dawn' ? '#ffe0f0' : '#ffffff'} />
+        </div>
+      ))}
+    </div>
+  )
+}
+function PixelCloud({ scale, tint }: { scale: number; tint: string }) {
+  const u = Math.round(4 * scale)
+  const rows = ['...XXX......', '..XXXXX.XX..', '.XXXXXXXXXX.', 'XXXXXXXXXXXX', '.XXXXXXXXXX.']
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(12, ${u}px)` }}>
+      {rows.flatMap((r, y) => [...r].map((ch, x) => <span key={y * 12 + x} style={{ width: u, height: u, background: ch === 'X' ? (y >= 3 ? '#dfe6f5' : tint) : 'transparent' }} />))}
+    </div>
+  )
+}

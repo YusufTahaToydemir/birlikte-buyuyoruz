@@ -11,6 +11,12 @@ const PALS: Record<string, BossPal> = {
   golem_lava: { base: '#4a3a3a', dark: '#2a1f1f', light: '#6a5555', eye: '#ffb03a', accent: '#ff6a2a', mouth: '#1a1010' },
   dragon_green: { base: '#4fa85a', dark: '#2f6f3a', light: '#8fd68a', eye: '#ffe04a', accent: '#f0d090', mouth: '#5a1f1f' },
   dragon_shadow: { base: '#4a3a6a', dark: '#2a1f40', light: '#7a68a0', eye: '#ff3a5a', accent: '#c0a8ff', mouth: '#1a0f25' },
+  slime_blue: { base: '#5fb8e8', dark: '#2f7ab0', light: '#c8f0ff', eye: '#1a1a2a', accent: '#ffffff', mouth: '#1f3f6a' },
+  slime_gold: { base: '#f0c34a', dark: '#b8922e', light: '#fff0a0', eye: '#1a1a2a', accent: '#ff6a8a', mouth: '#6a4a10' },
+  golem_ice: { base: '#a8d8f0', dark: '#6aa0c8', light: '#e8f8ff', eye: '#3a6aff', accent: '#3a6aff', mouth: '#2a4060' },
+  golem_moss: { base: '#6a7a5a', dark: '#45523a', light: '#8fa878', eye: '#b8ff5a', accent: '#5bd17c', mouth: '#2a301f' },
+  dragon_red: { base: '#c83a3a', dark: '#8a1f24', light: '#ff7a6a', eye: '#ffe04a', accent: '#ffd090', mouth: '#3a0f0f' },
+  dragon_gold: { base: '#e0b030', dark: '#a07a10', light: '#fff0a0', eye: '#ff3a3a', accent: '#fff8e0', mouth: '#5a3a0a' },
 }
 
 function ellipse(g: Grid, cx: number, cy: number, rx: number, ry: number, color: (x: number, y: number, nx: number, ny: number) => string | null, clipBottom = 99) {
@@ -125,8 +131,8 @@ function dragon(p: BossPal): Grid {
 
 export function renderBoss(key: string): Grid {
   const p = PALS[key] ?? PALS.slime_green
-  if (key.startsWith('slime')) return slime(p, key === 'slime_green')
-  if (key.startsWith('golem')) return golem(p, key === 'golem_lava' ? 7 : 3)
+  if (key.startsWith('slime')) return slime(p, key === 'slime_green' || key === 'slime_gold')
+  if (key.startsWith('golem')) return golem(p, ({ golem_lava: 7, golem_ice: 5, golem_moss: 11 } as Record<string, number>)[key] ?? 3)
   return dragon(p)
 }
 
@@ -215,6 +221,48 @@ const PETS: Record<string, { lines: string[]; pal: Palette }> = {
       '...GGGGGGG......',
       '...gG.gG........',
       '................',
+    ],
+  },
+  pet_bunny: {
+    pal: { W: '#f6f0ff', g: '#c8bcd8', P: '#ff9ab5', E: '#2a1d33', w: '#ffffff' },
+    lines: [
+      '...W....W.......',
+      '..WPW..WPW......',
+      '..WPW..WPW......',
+      '..WPW..WPW......',
+      '..WWWWWWWW......',
+      '.WWWWWWWWWW.....',
+      '.WWEwWWEwWW.....',
+      '.WWEEWWEEWW.....',
+      '.WWWWPPWWWW.....',
+      '..WWWWWWWW...WW.',
+      '..WWWWWWWWW.WWW.',
+      '.WWWWWWWWWWWWW..',
+      '.WWWWWWWWWWWW...',
+      '..gWWWWWWWWg....',
+      '..gg.gg.gg.gg...',
+      '................',
+    ],
+  },
+  pet_phoenix: {
+    pal: { R: '#ff5a2a', Y: '#ffd75a', O: '#ff9a3a', E: '#2a1d33', w: '#ffffff', K: '#ffd75a', k: '#c99a1e' },
+    lines: [
+      '......Y.Y.......',
+      '.....YRY.Y......',
+      '.....RRRR.......',
+      '....RRRRRR......',
+      '....REwRRR......',
+      '....REERRRKk....',
+      '.....RRRRR......',
+      '..O..RRRRRR..O..',
+      '.OOO.RRYYRR.OOO.',
+      'OORRRRYYYYRRRROO',
+      '.ORRRRYYYYRRRRO.',
+      '..ORRRRYYRRRRO..',
+      '....RRRRRRRR....',
+      '.....R.RR.R.....',
+      '....Y..YY..Y....',
+      '...Y..Y..Y..Y...',
     ],
   },
 }

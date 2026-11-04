@@ -5,6 +5,7 @@ import { BossSprite, HeroSprite, Icon, Portrait } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Segments, toastError, useGame } from '../game/ui'
+import { online } from './Games'
 
 export function Arena() {
   const { game, run } = useGame()
@@ -49,11 +50,11 @@ export function Arena() {
           <div className="absolute inset-[-50%] rays opacity-40 pointer-events-none" style={{ display: boss.defeated ? 'block' : 'none' }} />
           <div className="relative flex items-center justify-between font-pixel">
             <span className="text-xl">{boss.name}</span>
-            <span className="panel-dark px-2 py-0.5 text-[14px] text-ink2 flex items-center gap-1"><Icon name="moon" size={14} />{daysLeft} gün</span>
+            <span className="panel-dark px-2 py-0.5 text-[16px] text-ink2 flex items-center gap-1"><Icon name="moon" size={14} />{daysLeft} gün</span>
           </div>
           <div className="relative flex justify-center py-2">
             <button ref={bossRef} className={bossFx} onClick={poke} aria-label={boss.name}>
-              <BossSprite bossKey={boss.key} scale={3.4} className={boss.defeated ? 'grayscale opacity-60 rotate-[8deg]' : 'boss-idle'} />
+              <BossSprite bossKey={boss.key} scale={3.4} className={boss.defeated ? 'grayscale opacity-60 rotate-[8deg]' : boss.hp < boss.maxHp * 0.25 ? 'boss-idle boss-angry' : 'boss-idle'} />
             </button>
             {boss.defeated && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -72,7 +73,7 @@ export function Arena() {
             <div style={{ width: `${(pDmg / totalDmg) * 100}%`, background: '#ffcc3a' }} />
             <div style={{ width: `${(comboDmg / totalDmg) * 100}%`, background: '#5bd17c' }} />
           </div>
-          <div className="mt-1 flex justify-between font-pixel text-[13px]">
+          <div className="mt-1 flex justify-between font-pixel text-[15px]">
             <span className="text-magic flex items-center gap-1"><Icon name="sword" size={14} />{myDmg}</span>
             {comboDmg > 0 && <span className="text-ok flex items-center gap-1"><Icon name="heart" size={14} />{comboDmg}</span>}
             {partner && <span className="text-gold flex items-center gap-1">{pDmg}<Icon name="sword" size={14} /></span>}
@@ -92,7 +93,7 @@ export function Arena() {
             <div className="grid grid-cols-[1fr_auto_1fr] items-end">
               <Fighter name={me.name} hero={me} xp={myXp} crown={leader === 'me'} color="#b98aff" />
               <div className="font-pixel text-3xl text-hp pb-16 px-1 drop-shadow-[0_3px_0_#000]">VS</div>
-              <Fighter name={partner.name} hero={partner} xp={pXp} crown={leader === 'partner'} color="#ffcc3a" id="arena-partner" flip />
+              <Fighter name={partner.name} hero={partner} xp={pXp} crown={leader === 'partner'} color="#ffcc3a" id="arena-partner" flip isOnline={online(partner.lastSeen, game.serverTime)} />
             </div>
             <div className="mt-3 panel-dark p-2 space-y-1.5">
               <div className="flex items-center gap-2"><Icon name="check" size={16} /><Segments done={partner.todayDone} total={partner.todayTotal} color="#ffcc3a" /></div>
@@ -104,11 +105,11 @@ export function Arena() {
           <section className="grid grid-cols-3 gap-2">
             <button className="pbtn pbtn-purple flex-col !min-h-[84px] relative" disabled={game.cheersLeft <= 0} onClick={() => void social('CHEER')}>
               <Icon name="clap" size={34} /> Alkış
-              <span className="absolute top-1 right-1.5 text-[13px] bg-edge/60 rounded px-1">{game.cheersLeft}</span>
+              <span className="absolute top-1 right-1.5 text-[15px] bg-edge/60 rounded px-1">{game.cheersLeft}</span>
             </button>
             <button className="pbtn pbtn-green flex-col !min-h-[84px] relative" disabled={!canHeal} onClick={() => void social('HEAL')}>
               <Icon name={healerFree ? 'heart' : 'potion'} size={34} /> İyileştir
-              {healerFree && <span className="absolute top-1 right-1.5 text-[11px] bg-edge/60 rounded px-1 text-ok">✦</span>}
+              {healerFree && <span className="absolute top-1 right-1.5 text-[13px] bg-edge/60 rounded px-1 text-ok">✦</span>}
             </button>
             <button className="pbtn pbtn-gold flex-col !min-h-[84px]" disabled={me.gold < 10} onClick={() => { sfx.click(); setGiftOpen(o => !o) }}>
               <Icon name="gift" size={34} /> Altın
@@ -128,11 +129,11 @@ export function Arena() {
               {boss.hits.slice(0, 6).map((h, i) => {
                 const who = h.user === me.id ? me : h.user === partner.id ? partner : null
                 return (
-                  <div key={i} className="flex items-center gap-2 font-pixel text-[15px]">
+                  <div key={i} className="flex items-center gap-2 font-pixel text-[17px]">
                     {who ? <Portrait cls={who.class} look={who.look} gear={who.equipped} size={24} /> : <Icon name="heart" size={24} />}
                     <Icon name="sword" size={16} />
                     <span className="text-hp">-{h.damage}</span>
-                    <span className="ml-auto text-ink2 text-[12px]">{new Date(h.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="ml-auto text-ink2 text-[14px]">{new Date(h.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 )
               })}
@@ -144,16 +145,16 @@ export function Arena() {
   )
 }
 
-function Fighter({ name, hero, xp, crown, color, id, flip }: { name: string; hero: Hero; xp: number; crown: boolean; color: string; id?: string; flip?: boolean }) {
+function Fighter({ name, hero, xp, crown, color, id, flip, isOnline }: { name: string; hero: Hero; xp: number; crown: boolean; color: string; id?: string; flip?: boolean; isOnline?: boolean }) {
   return (
     <div className="flex flex-col items-center min-w-0" id={id}>
       <div className="h-8">{crown && <Icon name="crown" size={32} className="glow pop" />}</div>
       <div style={flip ? { transform: 'scaleX(-1)' } : undefined}>
         <HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={2.5} />
       </div>
-      <div className="font-pixel text-[15px] truncate max-w-full">{name}</div>
+      <div className="font-pixel text-[17px] truncate max-w-full flex items-center gap-1">{isOnline && <span className="w-2.5 h-2.5 rounded-full bg-ok border-2 border-edge shrink-0" title="Çevrimiçi" />}{name}</div>
       <div className="font-pixel text-xl flex items-center gap-1" style={{ color }}><Icon name="star" size={18} />{xp}</div>
-      <div className="font-pixel text-[12px] text-ink2">Sv {hero.level}</div>
+      <div className="font-pixel text-[14px] text-ink2">Sv {hero.level}</div>
     </div>
   )
 }
@@ -189,9 +190,9 @@ function InviteCard() {
         <button className="pbtn pbtn-gold w-full" disabled={busy} onClick={() => void make()}><Icon name="ticket" size={22} />Davet oluştur</button>
       ) : (
         <div className="space-y-2">
-          <input className="input text-[13px]" readOnly value={link} onFocus={e => e.currentTarget.select()} />
+          <input className="input text-[15px]" readOnly value={link} onFocus={e => e.currentTarget.select()} />
           <button className="pbtn pbtn-green w-full" onClick={() => void share()}><Icon name="gift" size={22} />Paylaş / kopyala</button>
-          <p className="text-[13px] text-ink2">24 saat geçerli, tek kullanımlık.</p>
+          <p className="text-[15px] text-ink2">24 saat geçerli, tek kullanımlık.</p>
         </div>
       )}
     </section>

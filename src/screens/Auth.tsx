@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { errorText, recoverWithCode, signIn, signUp } from '../lib/game'
 import { BossSprite, HeroSprite, Icon, SceneBg } from '../game/Sprite'
 import { sfx } from '../game/sfx'
+import { music } from '../game/music'
 
 type Mode = 'login' | 'setup' | 'invite' | 'recover'
 const USERNAME_RE = /^[a-z0-9_]{3,24}$/
@@ -15,6 +16,7 @@ function parseHash(hash: string): { mode: Mode; secret?: string } {
 }
 
 export function Auth({ hash }: { hash: string }) {
+  useEffect(() => { music.play('title') }, [])
   const parsed = parseHash(hash)
   const [mode, setMode] = useState<Mode>(parsed.mode)
   useEffect(() => setMode(parsed.mode), [parsed.mode])
@@ -40,7 +42,7 @@ function Field({ icon, children, error }: { icon: string; children: ReactNode; e
   return (
     <label className="block">
       <span className="flex items-center gap-2"><Icon name={icon} size={26} />{children}</span>
-      {error && <span className="block text-[13px] text-hp mt-1 ml-9">{error}</span>}
+      {error && <span className="block text-[15px] text-hp mt-1 ml-9">{error}</span>}
     </label>
   )
 }
@@ -65,7 +67,7 @@ function LoginForm({ onRecover }: { onRecover: () => void }) {
       <Field icon="lock"><input className="input" placeholder="Şifre" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
       {error && <p className="text-hp font-pixel text-center" role="alert">{error}</p>}
       <button type="submit" className="pbtn pbtn-gold w-full text-xl" disabled={busy}><Icon name="swords" size={24} />{busy ? '…' : 'Başla'}</button>
-      <button type="button" className="w-full text-[14px] text-ink2 underline py-1" onClick={onRecover}>Şifremi unuttum</button>
+      <button type="button" className="w-full text-[16px] text-ink2 underline py-1" onClick={onRecover}>Şifremi unuttum</button>
     </form>
   )
 }
@@ -131,7 +133,7 @@ function SignupForm({ kind, secret, onCancel }: { kind: 'setup' | 'invite'; secr
       <Field icon="lock" error={p2Err}><input className="input" placeholder="Şifre tekrar" type="password" autoComplete="new-password" value={password2} onChange={e => setPassword2(e.target.value)} required /></Field>
       {error && <p className="text-hp font-pixel text-center" role="alert">{error}</p>}
       <button type="submit" className="pbtn pbtn-gold w-full text-xl" disabled={busy || !!uErr || !!pErr || !!p2Err}><Icon name="swords" size={24} />Hesabı aç</button>
-      <button type="button" className="w-full text-[14px] text-ink2 underline py-1" onClick={onCancel}>Zaten hesabım var</button>
+      <button type="button" className="w-full text-[16px] text-ink2 underline py-1" onClick={onCancel}>Zaten hesabım var</button>
     </form>
   )
 }

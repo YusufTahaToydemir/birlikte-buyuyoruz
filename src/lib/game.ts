@@ -11,6 +11,7 @@ export interface Hero {
   stats: Partial<Record<Category, number>>
   equipped: Gear & { weapon?: number; armor?: number }
   streak: number; bestStreak: number; sound: boolean
+  shards: number; lastSeen: string | null
 }
 export interface Partner extends Hero { todayDone: number; todayTotal: number }
 export interface Quest { id: string; code: string; kind: 'DAILY' | 'SIDE'; category: Category; icon: string; title: string; xp: number; gold: number; damage: number; done: boolean }
@@ -19,7 +20,7 @@ export interface GameEvent { id: string; kind: string; data: Record<string, unkn
 export interface Boss { id: string; key: string; name: string; hp: number; maxHp: number; defeated: boolean; hits: Array<{ user: string | null; kind: string; damage: number; at: string }>; byUser: Record<string, number> }
 export interface Game {
   serverTime: string; today: string; weekStart: string; weekEnd: string
-  config: { difficulties: Difficulty[]; cheerXP: number; cheersPerDay: number; healAmount: number; bossGold: number; comboGold: number; comboDamage: number }
+  config: { difficulties: Difficulty[]; cheerXP: number; cheersPerDay: number; healAmount: number; bossGold: number; comboGold: number; comboDamage: number; shardsPerTicket: number; duelRewardsPerDay: number }
   hero: Hero | null
   day: { izin: boolean; difficulty: number } | null
   quests: Quest[]
@@ -33,6 +34,7 @@ export interface Game {
   achievements: string[]
   tickets: { available: number; requested: number; used: number }
   incomingRequests: number
+  play: { duels: number; together: number; word: boolean }
 }
 export interface Delta { xp: number; gold: number; damage: number; defeated?: boolean }
 export interface Ticket { id: string; week: string | null; status: 'AVAILABLE' | 'REQUESTED' | 'USED' | 'ARCHIVED'; source: string | null; createdAt: string }
@@ -65,6 +67,10 @@ const ERROR_TEXT: Record<string, string> = {
   RATE_LIMITED: 'Çok fazla deneme. 15 dk sonra dene.',
   PASSWORD_LENGTH: 'Şifre 6–128 karakter olmalı.',
   NETWORK: 'Bağlantı yok. İnternetini kontrol et.',
+  TOO_MANY_DUELS: 'En fazla 3 açık düello olabilir.',
+  DUEL_EXPIRED: 'Bu düellonun süresi doldu.',
+  INVALID_WORD: '5 harfli bir kelime yaz.',
+  NO_GUESSES_LEFT: 'Tahmin hakkın bitti, sıra eşinde.',
 }
 export function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : e instanceof Error ? e.message : String(e)
@@ -133,6 +139,28 @@ export const recoveryCodesStatus = () => rpc<{ unused: number; used: number; cre
 export const deleteAccount = () => rpc<{ ok: boolean }>('delete_account')
 export const disconnectCouple = () => rpc<Game>('disconnect_couple')
 
+// ---------- Oyunlar (düello, Günün Kelimesi, birlikte) ----------
+export type DuelGame = 'TAP' | 'MEMORY' | 'TIMING' | 'WORDS' | 'SLIDE'
+export interface Duel { id: string; game: DuelGame; seed: number; createdBy: string | null; opponent: string | null; scoreA: number | null; scoreB: number | null; status: 'OPEN' | 'DONE' | 'EXPIRED' | 'CANCELLED'; winner: string | null; createdAt: string; finishedAt: string | null; expiresAt: string }
+export interface WordGuess { by: string; word: string; res: string; at: string }
+export interface Together { code: string; icon: string; title: string; status: 'PENDING' | 'DONE' | null; proposedBy: string | null; confirmedAt: string | null }
+export interface Games {
+  duels: Duel[]
+  record: { me: number; partner: number; draws: number }
+  duelRewardsLeft: number
+  word: { date: string; guesses: WordGuess[]; solved: boolean; finished: boolean; answer: string | null; solvedDays: number } | null
+  together: Together[]
+  togetherDone: number
+  config: { togetherXP: number; togetherGold: number; togetherDamage: number }
+}
+export const getGames = () => rpc<Games>('get_games')
+export const duelCreate = (game: DuelGame, seed: number, score: number) => rpc<Games>('duel_create', { p_game: game, p_seed: seed, p_score: Math.round(score) })
+export const duelPlay = (id: string, score: number) => rpc<Games>('duel_play', { p_duel: id, p_score: Math.round(score) })
+export const duelCancel = (id: string) => rpc<Games>('duel_cancel', { p_duel: id })
+export const wordGuess = (word: string) => rpc<Games>('word_guess', { p_word: word })
+export const togetherMark = (code: string) => rpc<Games>('together_mark', { p_code: code })
+export const togetherCancel = (code: string) => rpc<Games>('together_cancel', { p_code: code })
+
 // ---------- Dükkan kataloğu (sunucudakiyle aynı) ----------
 export type Slot = 'weapon' | 'armor' | 'head' | 'cape' | 'pet'
 export interface ShopItem { key: string; name: string; kind: 'WEAPON' | 'ARMOR' | 'HEAD' | 'CAPE' | 'PET' | 'POTION'; tier: number; minLevel: number; price: number; effect: number }
@@ -140,36 +168,79 @@ const I = (key: string, name: string, kind: ShopItem['kind'], tier: number, minL
 export const SHOP: ShopItem[] = [
   I('potion_small', 'Can İksiri', 'POTION', 0, 1, 25, 30),
   I('potion_big', 'Büyük İksir', 'POTION', 0, 6, 60, 80),
-  I('weapon_1', 'Bronz Silah', 'WEAPON', 1, 3, 100), I('weapon_2', 'Gümüş Silah', 'WEAPON', 2, 8, 300),
-  I('weapon_3', 'Altın Silah', 'WEAPON', 3, 15, 800), I('weapon_4', 'Efsanevi Silah', 'WEAPON', 4, 25, 2000),
-  I('armor_1', 'Bronz Zırh', 'ARMOR', 1, 3, 100), I('armor_2', 'Gümüş Zırh', 'ARMOR', 2, 8, 300),
-  I('armor_3', 'Altın Zırh', 'ARMOR', 3, 15, 800), I('armor_4', 'Efsanevi Zırh', 'ARMOR', 4, 25, 2000),
-  I('head_class', 'Sınıf Başlığı', 'HEAD', 0, 2, 60), I('head_flower', 'Çiçek Tacı', 'HEAD', 0, 4, 120), I('head_crown', 'Kral Tacı', 'HEAD', 0, 20, 1500),
-  I('cape_red', 'Kızıl Pelerin', 'CAPE', 0, 3, 80), I('cape_blue', 'Mavi Pelerin', 'CAPE', 0, 3, 80),
-  I('cape_royal', 'Kraliyet Pelerini', 'CAPE', 0, 12, 400), I('cape_gold', 'Altın Pelerin', 'CAPE', 0, 22, 1200),
-  I('pet_cat', 'Kedi', 'PET', 0, 5, 250), I('pet_fox', 'Tilki', 'PET', 0, 10, 500), I('pet_owl', 'Baykuş', 'PET', 0, 15, 800), I('pet_dragon', 'Yavru Ejder', 'PET', 0, 25, 2000),
+  I('weapon_1', 'Bronz Silah', 'WEAPON', 1, 3, 100), I('weapon_2', 'Gümüş Silah', 'WEAPON', 2, 10, 400),
+  I('weapon_3', 'Altın Silah', 'WEAPON', 3, 22, 1200), I('weapon_4', 'Efsanevi Silah', 'WEAPON', 4, 38, 3000),
+  I('weapon_5', 'Ejder Silahı', 'WEAPON', 5, 55, 6000), I('weapon_6', 'Yıldız Silahı', 'WEAPON', 6, 75, 12000),
+  I('armor_1', 'Bronz Zırh', 'ARMOR', 1, 3, 100), I('armor_2', 'Gümüş Zırh', 'ARMOR', 2, 10, 400),
+  I('armor_3', 'Altın Zırh', 'ARMOR', 3, 22, 1200), I('armor_4', 'Efsanevi Zırh', 'ARMOR', 4, 38, 3000),
+  I('armor_5', 'Ejder Zırhı', 'ARMOR', 5, 55, 6000), I('armor_6', 'Yıldız Zırhı', 'ARMOR', 6, 75, 12000),
+  I('head_class', 'Sınıf Başlığı', 'HEAD', 0, 2, 60), I('head_flower', 'Çiçek Tacı', 'HEAD', 0, 6, 150), I('head_laurel', 'Defne Tacı', 'HEAD', 0, 16, 700),
+  I('head_crown', 'Kral Tacı', 'HEAD', 0, 30, 2500), I('head_circlet', 'Yıldız Tacı', 'HEAD', 0, 60, 8000),
+  I('cape_red', 'Kızıl Pelerin', 'CAPE', 0, 3, 80), I('cape_blue', 'Mavi Pelerin', 'CAPE', 0, 3, 80), I('cape_green', 'Orman Pelerini', 'CAPE', 0, 8, 200),
+  I('cape_royal', 'Kraliyet Pelerini', 'CAPE', 0, 18, 800), I('cape_shadow', 'Gölge Pelerini', 'CAPE', 0, 34, 2200),
+  I('cape_gold', 'Altın Pelerin', 'CAPE', 0, 46, 4000), I('cape_star', 'Yıldızlı Pelerin', 'CAPE', 0, 68, 9000),
+  I('pet_cat', 'Kedi', 'PET', 0, 5, 250), I('pet_fox', 'Tilki', 'PET', 0, 12, 600), I('pet_owl', 'Baykuş', 'PET', 0, 20, 1000),
+  I('pet_bunny', 'Tavşan', 'PET', 0, 28, 1600), I('pet_dragon', 'Yavru Ejder', 'PET', 0, 42, 3500), I('pet_phoenix', 'Anka Kuşu', 'PET', 0, 80, 15000),
 ]
 export const shopItem = (key: string) => SHOP.find(s => s.key === key)
+
+// ---------- Seviye yolu: ödüller ve unvanlar (sunucudaki bb_level_reward ile aynı) ----------
+export const levelStart = (l: number) => (Math.max(l, 1) - 1) * (150 + 15 * Math.max(l, 1))
+export function levelReward(l: number): { gold: number; potion: 'potion_small' | 'potion_big' | null } {
+  return { gold: 20 + 5 * l + (l % 5 === 0 ? 10 * l : 0), potion: l % 10 === 0 ? 'potion_big' : l % 5 === 0 ? 'potion_small' : null }
+}
+export const TITLES: Array<{ level: number; name: string; color: string }> = [
+  { level: 1, name: 'Çaylak', color: '#c9bde6' },
+  { level: 5, name: 'Gezgin', color: '#9ad08a' },
+  { level: 10, name: 'Yiğit', color: '#5bd17c' },
+  { level: 15, name: 'Akıncı', color: '#4cc9f0' },
+  { level: 20, name: 'Kahraman', color: '#6aa8ff' },
+  { level: 30, name: 'Şampiyon', color: '#b98aff' },
+  { level: 40, name: 'Muhafız', color: '#d08aff' },
+  { level: 50, name: 'Usta', color: '#ff8ab5' },
+  { level: 60, name: 'Bilge', color: '#ff9a3a' },
+  { level: 70, name: 'Efsane', color: '#ffcc3a' },
+  { level: 85, name: 'Destan', color: '#ffe680' },
+  { level: 100, name: 'Ölümsüz', color: '#7ff7ff' },
+]
+export const titleFor = (l: number) => [...TITLES].reverse().find(t => l >= t.level) ?? TITLES[0]
+/** Bu seviyede açılan dükkan eşyaları */
+export const unlocksAt = (l: number) => SHOP.filter(i => i.minLevel === l)
 
 export const ACHIEVEMENTS: Array<{ key: string; name: string; icon: string }> = [
   { key: 'FIRST_QUEST', name: 'İlk Adım', icon: 'check' },
   { key: 'QUESTS_50', name: '50 Görev', icon: 'star' },
   { key: 'QUESTS_250', name: '250 Görev', icon: 'trophy' },
+  { key: 'QUESTS_1000', name: '1000 Görev', icon: 'crown' },
   { key: 'EARLY_BIRD', name: 'Erkenci', icon: 'sun' },
   { key: 'BOOKWORM', name: 'Kitap Kurdu', icon: 'book' },
   { key: 'QURAN_30', name: 'Kur\'an Dostu', icon: 'quran' },
   { key: 'ATHLETE', name: 'Atlet', icon: 'muscle' },
   { key: 'STREAK_7', name: '7 Gün Seri', icon: 'flame' },
   { key: 'STREAK_30', name: '30 Gün Seri', icon: 'flame' },
+  { key: 'STREAK_100', name: '100 Gün Seri', icon: 'sun' },
   { key: 'BOSS_1', name: 'Canavar Avcısı', icon: 'swords' },
   { key: 'BOSS_5', name: 'Efsane Avcı', icon: 'crown' },
+  { key: 'BOSS_20', name: 'Ejder Terbiyecisi', icon: 'skull' },
   { key: 'LEVEL_5', name: 'Seviye 5', icon: 'stairs' },
   { key: 'LEVEL_10', name: 'Seviye 10', icon: 'shield' },
   { key: 'LEVEL_20', name: 'Seviye 20', icon: 'helmet' },
+  { key: 'LEVEL_30', name: 'Seviye 30', icon: 'sword' },
+  { key: 'LEVEL_50', name: 'Seviye 50', icon: 'trophy' },
+  { key: 'LEVEL_75', name: 'Seviye 75', icon: 'sparkle' },
+  { key: 'LEVEL_100', name: 'Seviye 100', icon: 'crown' },
   { key: 'RICH', name: 'Zengin', icon: 'chest' },
   { key: 'MYTHIC_DAY', name: 'Mitik Gün', icon: 'sparkle' },
   { key: 'FRIEND', name: 'Can Dostu', icon: 'clap' },
   { key: 'COMBO', name: 'Kombo', icon: 'heart' },
+  { key: 'DUEL_1', name: 'İlk Zafer', icon: 'swords' },
+  { key: 'DUEL_10', name: 'Düellocu', icon: 'bolt' },
+  { key: 'DUEL_50', name: 'Arena Ustası', icon: 'trophy' },
+  { key: 'WORD_1', name: 'İlk Kelime', icon: 'scroll' },
+  { key: 'WORD_25', name: 'Kelime Avcısı', icon: 'book' },
+  { key: 'TOGETHER_1', name: 'Birlikte', icon: 'heart' },
+  { key: 'TOGETHER_20', name: 'Can Yoldaşı', icon: 'gift' },
+  { key: 'TICKET_1', name: 'İlk Bilet', icon: 'ticket' },
 ]
 
 export const CAT_INFO: Record<Category, { name: string; icon: string; color: string }> = {

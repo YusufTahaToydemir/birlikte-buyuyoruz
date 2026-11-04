@@ -6,9 +6,10 @@ import { BossSprite, HeroSprite, Icon, PetSprite, Portrait } from '../game/Sprit
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Sheet, toastError, useGame } from '../game/ui'
+import { ShardMeter } from '../game/Events'
 
-const HEAD_ICON: Record<string, string> = { head_class: 'helmet', head_flower: 'flower', head_crown: 'crown' }
-const TIER_COLOR = ['#9a8fb8', '#d08a4a', '#cfd8e8', '#ffcc3a', '#b98aff']
+const HEAD_ICON: Record<string, string> = { head_class: 'helmet', head_flower: 'flower', head_crown: 'crown', head_laurel: 'flower', head_circlet: 'crown' }
+const TIER_COLOR = ['#9a8fb8', '#d08a4a', '#cfd8e8', '#ffcc3a', '#b98aff', '#ff6a3a', '#7ff7ff']
 
 const GEAR_KINDS = ['WEAPON', 'ARMOR', 'HEAD', 'CAPE']
 function gearWith(eq: Gear, i: ShopItem): Gear {
@@ -31,7 +32,7 @@ export function Treasure() {
         {(['shop', 'tickets'] as const).map(t => (
           <button key={t} className={`h-12 rounded-[4px] font-pixel text-lg flex items-center justify-center gap-2 relative ${tab === t ? 'bg-panel2 text-gold' : 'text-ink2'}`} onClick={() => { sfx.tab(); setTab(t) }}>
             <Icon name={t === 'shop' ? 'bag' : 'ticket'} size={26} />{t === 'shop' ? 'Dükkan' : 'Biletler'}
-            {t === 'tickets' && game.tickets.available > 0 && <span className="text-[14px] text-ticket">{game.tickets.available}</span>}
+            {t === 'tickets' && game.tickets.available > 0 && <span className="text-[16px] text-ticket">{game.tickets.available}</span>}
             {t === 'tickets' && game.incomingRequests > 0 && <span className="absolute top-1.5 right-3 w-3 h-3 rounded-full bg-hp border-2 border-edge blinkdot" />}
           </button>
         ))}
@@ -76,13 +77,13 @@ function Shop() {
               const qty = i.kind === 'POTION' ? game.inventory[i.key] ?? 0 : 0
               return (
                 <button key={i.key} className={`panel p-2 flex flex-col items-center gap-1 relative ${locked ? 'opacity-55' : ''}`} onClick={() => { sfx.click(); setSel(i) }}>
-                  {i.tier > 0 && <span className="absolute top-1 left-1.5 font-pixel text-[12px]" style={{ color: TIER_COLOR[i.tier] }}>+{i.tier}</span>}
-                  {qty > 0 && <span className="absolute top-1 right-1.5 font-pixel text-[12px] text-ink2">×{qty}</span>}
+                  {i.tier > 0 && <span className="absolute top-1 left-1.5 font-pixel text-[14px]" style={{ color: TIER_COLOR[i.tier] }}>+{i.tier}</span>}
+                  {qty > 0 && <span className="absolute top-1 right-1.5 font-pixel text-[14px] text-ink2">×{qty}</span>}
                   <div className="h-[52px] grid place-items-center">{GEAR_KINDS.includes(i.kind) ? <HeroSprite cls={h.class} look={h.look} gear={gearWith(h.equipped, i)} scale={1.25} animate={false} /> : <ItemArt item={i} size={44} />}</div>
-                  <span className="font-pixel text-[12px] leading-tight text-center h-[28px] flex items-center">{i.name}</span>
-                  {own ? <span className="font-pixel text-ok flex items-center gap-1 text-[14px]"><Icon name="check" size={16} /></span>
-                    : locked ? <span className="font-pixel text-ink2 flex items-center gap-1 text-[14px]"><Icon name="lock" size={14} />Sv {i.minLevel}</span>
-                      : <span className={`font-pixel flex items-center gap-1 text-[14px] ${h.gold >= i.price ? 'text-gold' : 'text-hp'}`}><Icon name="coin" size={14} />{i.price}</span>}
+                  <span className="font-pixel text-[14px] leading-tight text-center h-[28px] flex items-center">{i.name}</span>
+                  {own ? <span className="font-pixel text-ok flex items-center gap-1 text-[16px]"><Icon name="check" size={16} /></span>
+                    : locked ? <span className="font-pixel text-ink2 flex items-center gap-1 text-[16px]"><Icon name="lock" size={14} />Sv {i.minLevel}</span>
+                      : <span className={`font-pixel flex items-center gap-1 text-[16px] ${h.gold >= i.price ? 'text-gold' : 'text-hp'}`}><Icon name="coin" size={14} />{i.price}</span>}
                 </button>
               )
             })}
@@ -144,20 +145,27 @@ function Tickets() {
   return (
     <div className="space-y-3">
       <section className="panel p-4 flex flex-col items-center gap-3" style={{ background: 'radial-gradient(circle at 50% 40%, #ffd16633, transparent 65%), var(--color-panel)' }}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Icon name="ticket" size={64} className={available.length > 0 ? 'glow' : 'opacity-40 grayscale'} />
           <span className="font-pixel text-5xl text-ticket">{game.tickets.available}</span>
+          <div className="panel-dark p-1.5 flex flex-col items-center gap-0.5">
+            <ShardMeter n={me.shards ?? 0} need={game.config.shardsPerTicket ?? 4} size={22} />
+            <span className="font-pixel text-[14px] text-ticket">{me.shards ?? 0}/{game.config.shardsPerTicket ?? 4}</span>
+          </div>
         </div>
         <button className="pbtn pbtn-gold w-full text-lg" disabled={busy || available.length === 0 || !partner}
           onClick={() => void act(() => requestTicket(available[0].id), () => { sfx.ticket(); fx.confetti(30) })}>
           <Icon name="ticket" size={24} />Bileti kullan
         </button>
-        <div className="flex gap-2 w-full">
-          <div className="panel-dark flex-1 flex items-center justify-center gap-1.5 py-1.5 font-pixel text-[14px]">
-            {game.boss ? <BossSprite bossKey={game.boss.key} scale={0.5} /> : <Icon name="swords" size={22} />} = <Icon name="ticket" size={18} />
+        <div className="grid grid-cols-3 gap-2 w-full font-pixel text-[15px]">
+          <div className="panel-dark flex items-center justify-center gap-1 py-1.5">
+            {game.boss ? <BossSprite bossKey={game.boss.key} scale={0.5} /> : <Icon name="swords" size={22} />}=<Icon name="shard" size={18} />
           </div>
-          <div className="panel-dark flex-1 flex items-center justify-center gap-1.5 py-1.5 font-pixel text-[14px]">
-            <Icon name="check" size={20} />5 tam gün = <Icon name="ticket" size={18} />
+          <div className="panel-dark flex items-center justify-center gap-1 py-1.5">
+            <Icon name="check" size={18} />×5=<Icon name="shard" size={18} />
+          </div>
+          <div className="panel-dark flex items-center justify-center gap-1 py-1.5">
+            4<Icon name="shard" size={18} />=<Icon name="ticket" size={18} />
           </div>
         </div>
       </section>
@@ -175,7 +183,7 @@ function Tickets() {
         <section key={r.id} className="panel-dark p-3 flex items-center gap-3">
           <Icon name="ticket" size={32} className="blinkdot" />
           <span className="flex-1 font-pixel text-ink2">Onay bekliyor…</span>
-          <button className="pbtn pbtn-dark !min-h-[40px] text-[14px]" disabled={busy} onClick={() => void act(() => respondRedemption(r.id, 'withdraw'), () => sfx.undo())}>Geri çek</button>
+          <button className="pbtn pbtn-dark !min-h-[40px] text-[16px]" disabled={busy} onClick={() => void act(() => respondRedemption(r.id, 'withdraw'), () => sfx.undo())}>Geri çek</button>
         </section>
       ))}
 
@@ -184,10 +192,10 @@ function Tickets() {
           {history.map(r => {
             const who = r.requestedBy === me.id ? me : partner
             return (
-              <div key={r.id} className="flex items-center gap-2 font-pixel text-[14px]">
+              <div key={r.id} className="flex items-center gap-2 font-pixel text-[16px]">
                 {who && <Portrait cls={who.class} look={who.look} gear={who.equipped} size={24} />}
                 <Icon name="ticket" size={18} /><Icon name="check" size={16} />
-                <span className="ml-auto text-ink2 text-[12px]">{new Date(r.resolvedAt ?? r.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                <span className="ml-auto text-ink2 text-[14px]">{new Date(r.resolvedAt ?? r.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
               </div>
             )
           })}

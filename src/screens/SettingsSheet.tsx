@@ -4,6 +4,7 @@ import { deleteAccount, generateRecoveryCodes, setDifficulty, signOut, updateHer
 import { CLASS_INFO, type HeroClass, type Look } from '../game/art/hero'
 import { HeroSprite, Icon, Portrait } from '../game/Sprite'
 import { sfx } from '../game/sfx'
+import { music } from '../game/music'
 import { Sheet, toast, toastError, useGame } from '../game/ui'
 import { DIFFICULTIES, DifficultyPicker, LookEditor } from './CreateHero'
 
@@ -11,6 +12,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
   const { game, run, refresh, go } = useGame()
   const h = game.hero!
   const [view, setView] = useState<'main' | 'look' | 'codes' | 'delete'>('main')
+  const [musicOn, setMusicOn] = useState(music.isEnabled())
   const close = () => { setView('main'); onClose() }
 
   async function pickDiff(n: number) {
@@ -33,16 +35,19 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
         <div className="space-y-4">
           <section className="space-y-2">
             <div className="font-pixel text-lg flex items-center gap-2"><Icon name="swords" size={22} />Zorluk
-              {h.pendingDifficulty && <span className="ml-auto text-[13px] text-xp">Yarın: {DIFFICULTIES[h.pendingDifficulty - 1].name}</span>}
+              {h.pendingDifficulty && <span className="ml-auto text-[15px] text-xp">Yarın: {DIFFICULTIES[h.pendingDifficulty - 1].name}</span>}
             </div>
             <DifficultyPicker value={h.pendingDifficulty ?? h.difficulty} onChange={n => void pickDiff(n)} />
           </section>
 
           <div className="grid grid-cols-2 gap-2">
             <button className="pbtn pbtn-dark" onClick={() => void toggleSound()} aria-pressed={h.sound}>
-              <Icon name={h.sound ? 'sound' : 'mute'} size={24} />{h.sound ? 'Ses açık' : 'Ses kapalı'}
+              <Icon name={h.sound ? 'sound' : 'mute'} size={24} />{h.sound ? 'Efekt açık' : 'Efekt kapalı'}
             </button>
-            <button className="pbtn pbtn-dark" onClick={() => { sfx.click(); setView('look') }}>
+            <button className="pbtn pbtn-dark" onClick={() => { const on = !musicOn; music.setEnabled(on); setMusicOn(on); sfx.click() }} aria-pressed={musicOn}>
+              <Icon name="note" size={24} className={musicOn ? 'bob' : 'opacity-40 grayscale'} />{musicOn ? 'Müzik açık' : 'Müzik kapalı'}
+            </button>
+            <button className="pbtn pbtn-dark col-span-2" onClick={() => { sfx.click(); setView('look') }}>
               <Portrait cls={h.class} look={h.look} gear={h.equipped} size={28} />Görünüm
             </button>
           </div>
@@ -52,10 +57,10 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <button className="pbtn pbtn-dark text-[15px]" onClick={() => { sfx.click(); setView('codes') }}><Icon name="lock" size={20} />Kurtarma kodu</button>
-            <button className="pbtn pbtn-dark text-[15px]" onClick={() => void signOut()}>Çıkış yap</button>
+            <button className="pbtn pbtn-dark text-[17px]" onClick={() => { sfx.click(); setView('codes') }}><Icon name="lock" size={20} />Kurtarma kodu</button>
+            <button className="pbtn pbtn-dark text-[17px]" onClick={() => void signOut()}>Çıkış yap</button>
           </div>
-          <button className="w-full text-[13px] text-ink2 underline py-2" onClick={() => setView('delete')}>Hesabı sil</button>
+          <button className="w-full text-[15px] text-ink2 underline py-2" onClick={() => setView('delete')}>Hesabı sil</button>
         </div>
       )}
       {view === 'look' && <LookView onBack={() => setView('main')} />}
@@ -87,7 +92,7 @@ function LookView({ onBack }: { onBack: () => void }) {
         {(Object.keys(CLASS_INFO) as HeroClass[]).map(c => (
           <button key={c} className={`panel-dark py-1 flex flex-col items-center ${cls === c ? '!border-gold' : 'opacity-60'}`} onClick={() => { sfx.click(); setCls(c) }}>
             <Portrait cls={c} look={look} size={40} />
-            <span className="font-pixel text-[12px]" style={{ color: CLASS_INFO[c].color }}>{CLASS_INFO[c].name}</span>
+            <span className="font-pixel text-[14px]" style={{ color: CLASS_INFO[c].color }}>{CLASS_INFO[c].name}</span>
           </button>
         ))}
       </div>
@@ -109,7 +114,7 @@ function CodesView({ onBack }: { onBack: () => void }) {
   }
   return (
     <div className="space-y-3">
-      <p className="text-[15px] text-ink2">Şifreni unutursan bu kodlardan biriyle girersin. Her kod tek kullanımlık; yenisini üretmek eskileri iptal eder.</p>
+      <p className="text-[17px] text-ink2">Şifreni unutursan bu kodlardan biriyle girersin. Her kod tek kullanımlık; yenisini üretmek eskileri iptal eder.</p>
       {codes ? (
         <>
           <div className="panel-dark p-3 grid grid-cols-2 gap-2 font-mono text-lg text-center select-all">{codes.map(c => <span key={c}>{c}</span>)}</div>
@@ -131,7 +136,7 @@ function DeleteView({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-center"><Icon name="heart" size={56} className="grayscale" /></div>
-      <p className="text-[15px]">Kahramanın, eşyaların ve biletlerin kalıcı olarak silinir. Onaylamak için <b>SİL</b> yaz.</p>
+      <p className="text-[17px]">Kahramanın, eşyaların ve biletlerin kalıcı olarak silinir. Onaylamak için <b>SİL</b> yaz.</p>
       <input className="input" value={text} onChange={e => setText(e.target.value)} aria-label="Onay" />
       <button className="pbtn pbtn-red w-full" disabled={busy || text.trim().toLocaleUpperCase('tr-TR') !== 'SİL'} onClick={() => void del()}>Hesabı kalıcı sil</button>
       <button className="pbtn pbtn-dark w-full" onClick={onBack}>◀ Geri</button>
