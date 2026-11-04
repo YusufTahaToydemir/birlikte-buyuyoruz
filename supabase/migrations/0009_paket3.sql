@@ -361,7 +361,7 @@ begin
   -- açığa çıkmamış ilk konum (yeşil harf ya da önceki ipucu değil)
   v_pos := null;
   for i in 1..5 loop
-    if not exists (select 1 from jsonb_array_elements(w.guesses) g where substr(g->>'res', i, 1) = 'G')
+    if not exists (select 1 from jsonb_array_elements(w.guesses) ge where substr(ge->>'res', i, 1) = 'G')
        and not exists (select 1 from jsonb_array_elements(w.hints) x where (x->>'pos')::int = i) then v_pos := i; exit; end if;
   end loop;
   if v_pos is null then raise exception 'INVALID_STATE'; end if;
