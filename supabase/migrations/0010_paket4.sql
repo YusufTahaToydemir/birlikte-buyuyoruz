@@ -246,6 +246,7 @@ create table if not exists push_log (
   kind text not null,
   primary key (user_id, local_date, kind)
 );
+alter table push_log enable row level security;
 update app_config set value = value || jsonb_build_object('pushSecret', encode(extensions.gen_random_bytes(24), 'hex')) where key = 'game' and not (value ? 'pushSecret');
 
 create or replace function push_subscribe(p_endpoint text, p_p256dh text, p_auth text) returns jsonb
