@@ -78,7 +78,7 @@ begin
   perform bb_event(a, 'CHEER', '{"xp":5}'::jsonb, b);
   q := bb_push_queue();
   if jsonb_array_length(q) <> 2 then raise exception 'kuyruk %', q; end if;
-  if not exists (select 1 from jsonb_array_elements(q) x where x->>'tag' = 'events' and x->>'body' like 'B: seni alkışladı%') then raise exception 'olay metni %', q; end if;
+  if not exists (select 1 from jsonb_array_elements(q) x where x->>'tag' = 'events' and x->>'body' like 'Ali: seni alkışladı%') then raise exception 'olay metni %', q; end if;
   if not exists (select 1 from jsonb_array_elements(q) x where x->>'tag' = 'remind' and x->>'title' like 'Kyron · 11 görev kaldı%') then raise exception 'hatırlatma %', q; end if;
   q := bb_push_queue();
   if jsonb_array_length(q) <> 0 then raise exception 'kuyruk tekrar %', q; end if;
