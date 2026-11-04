@@ -1,0 +1,198 @@
+// Hazine: dükkan (altınla eşya) ve biletler (boss + kişisel; partner onayıyla kullanılır).
+import { useCallback, useEffect, useState } from 'react'
+import { buyItem, getTickets, requestTicket, respondRedemption, SHOP, type Redemption, type ShopItem, type Ticket } from '../lib/game'
+import type { Gear } from '../game/art/hero'
+import { BossSprite, HeroSprite, Icon, PetSprite, Portrait } from '../game/Sprite'
+import { fx } from '../game/fx'
+import { sfx } from '../game/sfx'
+import { Sheet, toastError, useGame } from '../game/ui'
+
+const HEAD_ICON: Record<string, string> = { head_class: 'helmet', head_flower: 'flower', head_crown: 'crown' }
+const TIER_COLOR = ['#9a8fb8', '#d08a4a', '#cfd8e8', '#ffcc3a', '#b98aff']
+
+const GEAR_KINDS = ['WEAPON', 'ARMOR', 'HEAD', 'CAPE']
+function gearWith(eq: Gear, i: ShopItem): Gear {
+  return { ...eq, ...(i.kind === 'WEAPON' ? { weapon: i.tier } : i.kind === 'ARMOR' ? { armor: i.tier } : i.kind === 'HEAD' ? { head: i.key } : i.kind === 'CAPE' ? { cape: i.key } : {}) }
+}
+
+function ItemArt({ item, size = 40 }: { item: ShopItem; size?: number }) {
+  if (item.kind === 'PET') return <PetSprite petKey={item.key} scale={size / 16} className="!animate-none" />
+  const icon = item.kind === 'POTION' ? item.key === 'potion_big' ? 'potion_big' : 'potion'
+    : item.kind === 'WEAPON' ? 'sword' : item.kind === 'ARMOR' ? 'shield' : item.kind === 'HEAD' ? HEAD_ICON[item.key] ?? 'helmet' : 'cape'
+  return <Icon name={icon} size={size} />
+}
+
+export function Treasure() {
+  const { game } = useGame()
+  const [tab, setTab] = useState<'shop' | 'tickets'>(game.incomingRequests > 0 ? 'tickets' : 'shop')
+  return (
+    <div className="space-y-3">
+      <div className="panel grid grid-cols-2 p-1 gap-1">
+        {(['shop', 'tickets'] as const).map(t => (
+          <button key={t} className={`h-12 rounded-[4px] font-pixel text-lg flex items-center justify-center gap-2 relative ${tab === t ? 'bg-panel2 text-gold' : 'text-ink2'}`} onClick={() => { sfx.tab(); setTab(t) }}>
+            <Icon name={t === 'shop' ? 'bag' : 'ticket'} size={26} />{t === 'shop' ? 'Dükkan' : 'Biletler'}
+            {t === 'tickets' && game.tickets.available > 0 && <span className="text-[14px] text-ticket">{game.tickets.available}</span>}
+            {t === 'tickets' && game.incomingRequests > 0 && <span className="absolute top-1.5 right-3 w-3 h-3 rounded-full bg-hp border-2 border-edge blinkdot" />}
+          </button>
+        ))}
+      </div>
+      {tab === 'shop' ? <Shop /> : <Tickets />}
+    </div>
+  )
+}
+
+function Shop() {
+  const { game, run } = useGame()
+  const h = game.hero!
+  const [sel, setSel] = useState<ShopItem | null>(null)
+  const isOwned = (i: ShopItem) => i.kind !== 'POTION' && (game.inventory[i.key] ?? 0) > 0
+
+  async function buy(i: ShopItem) {
+    const g = await run(() => buyItem(i.key))
+    if (!g) return
+    sfx.buy(); sfx.coin()
+    const s = fx.fromEl(document.getElementById('hud-gold'))
+    fx.float(`-${i.price}`, s.x, s.y + 24, '#ffcc3a', true)
+    fx.flash('rgba(255,215,90,.3)')
+    if (i.kind !== 'POTION') fx.confetti(40)
+    setSel(null)
+  }
+
+  const groups: Array<{ kinds: ShopItem['kind'][]; icon: string }> = [
+    { kinds: ['POTION'], icon: 'potion' },
+    { kinds: ['WEAPON', 'ARMOR'], icon: 'swords' },
+    { kinds: ['HEAD', 'CAPE'], icon: 'crown' },
+    { kinds: ['PET'], icon: 'pet' },
+  ]
+
+  return (
+    <>
+      {groups.map(gr => (
+        <section key={gr.icon} className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {SHOP.filter(i => gr.kinds.includes(i.kind)).map(i => {
+              const locked = h.level < i.minLevel
+              const own = isOwned(i)
+              const qty = i.kind === 'POTION' ? game.inventory[i.key] ?? 0 : 0
+              return (
+                <button key={i.key} className={`panel p-2 flex flex-col items-center gap-1 relative ${locked ? 'opacity-55' : ''}`} onClick={() => { sfx.click(); setSel(i) }}>
+                  {i.tier > 0 && <span className="absolute top-1 left-1.5 font-pixel text-[12px]" style={{ color: TIER_COLOR[i.tier] }}>+{i.tier}</span>}
+                  {qty > 0 && <span className="absolute top-1 right-1.5 font-pixel text-[12px] text-ink2">×{qty}</span>}
+                  <div className="h-[52px] grid place-items-center">{GEAR_KINDS.includes(i.kind) ? <HeroSprite cls={h.class} look={h.look} gear={gearWith(h.equipped, i)} scale={1.25} animate={false} /> : <ItemArt item={i} size={44} />}</div>
+                  <span className="font-pixel text-[12px] leading-tight text-center h-[28px] flex items-center">{i.name}</span>
+                  {own ? <span className="font-pixel text-ok flex items-center gap-1 text-[14px]"><Icon name="check" size={16} /></span>
+                    : locked ? <span className="font-pixel text-ink2 flex items-center gap-1 text-[14px]"><Icon name="lock" size={14} />Sv {i.minLevel}</span>
+                      : <span className={`font-pixel flex items-center gap-1 text-[14px] ${h.gold >= i.price ? 'text-gold' : 'text-hp'}`}><Icon name="coin" size={14} />{i.price}</span>}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      ))}
+
+      <Sheet open={!!sel} onClose={() => setSel(null)} title={sel?.name}>
+        {sel && (() => {
+          const locked = h.level < sel.minLevel
+          const own = isOwned(sel)
+          const gear = gearWith(h.equipped, sel)
+          return (
+            <div className="space-y-4">
+              <div className="panel-dark flex items-end justify-center gap-4 py-4 relative overflow-hidden">
+                <div className="absolute inset-[-60%] rays opacity-25" />
+                {sel.kind === 'POTION' ? (
+                  <div className="relative flex flex-col items-center gap-2"><ItemArt item={sel} size={96} /><span className="font-pixel text-2xl text-hp">+{sel.effect} ❤</span></div>
+                ) : sel.kind === 'PET' ? (
+                  <><div className="relative"><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={3} /></div><div className="relative"><PetSprite petKey={sel.key} scale={4} /></div></>
+                ) : <div className="relative"><HeroSprite cls={h.class} look={h.look} gear={gear} scale={4} pose="joy" /></div>}
+              </div>
+              {own ? (
+                <div className="font-pixel text-ok text-center text-lg flex items-center justify-center gap-2"><Icon name="check" size={24} />Sende var</div>
+              ) : locked ? (
+                <div className="pbtn pbtn-dark w-full opacity-70"><Icon name="lock" size={22} />Seviye {sel.minLevel}</div>
+              ) : (
+                <button className="pbtn pbtn-gold w-full text-xl" disabled={h.gold < sel.price} onClick={() => void buy(sel)}>
+                  Al <Icon name="coin" size={24} />{sel.price}
+                </button>
+              )}
+            </div>
+          )
+        })()}
+      </Sheet>
+    </>
+  )
+}
+
+function Tickets() {
+  const { game, refresh } = useGame()
+  const me = game.hero!
+  const partner = game.partner
+  const [data, setData] = useState<{ tickets: Ticket[]; redemptions: Redemption[] } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = useCallback(async () => { try { setData(await getTickets()) } catch (e) { toastError(e) } }, [])
+  useEffect(() => { void load() }, [load, game.tickets.available, game.tickets.requested, game.incomingRequests])
+
+  const available = data?.tickets.filter(t => t.status === 'AVAILABLE') ?? []
+  const incoming = data?.redemptions.filter(r => r.partnerId === me.id && r.status === 'REQUESTED' && new Date(r.expiresAt) > new Date()) ?? []
+  const mine = data?.redemptions.filter(r => r.requestedBy === me.id && r.status === 'REQUESTED') ?? []
+  const history = data?.redemptions.filter(r => r.status === 'APPROVED').slice(0, 5) ?? []
+
+  const act = async (fn: () => Promise<unknown>, good: () => void) => {
+    setBusy(true)
+    try { await fn(); good(); await Promise.all([load(), refresh()]) } catch (e) { toastError(e) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <section className="panel p-4 flex flex-col items-center gap-3" style={{ background: 'radial-gradient(circle at 50% 40%, #ffd16633, transparent 65%), var(--color-panel)' }}>
+        <div className="flex items-center gap-3">
+          <Icon name="ticket" size={64} className={available.length > 0 ? 'glow' : 'opacity-40 grayscale'} />
+          <span className="font-pixel text-5xl text-ticket">{game.tickets.available}</span>
+        </div>
+        <button className="pbtn pbtn-gold w-full text-lg" disabled={busy || available.length === 0 || !partner}
+          onClick={() => void act(() => requestTicket(available[0].id), () => { sfx.ticket(); fx.confetti(30) })}>
+          <Icon name="ticket" size={24} />Bileti kullan
+        </button>
+        <div className="flex gap-2 w-full">
+          <div className="panel-dark flex-1 flex items-center justify-center gap-1.5 py-1.5 font-pixel text-[14px]">
+            {game.boss ? <BossSprite bossKey={game.boss.key} scale={0.5} /> : <Icon name="swords" size={22} />} = <Icon name="ticket" size={18} />
+          </div>
+          <div className="panel-dark flex-1 flex items-center justify-center gap-1.5 py-1.5 font-pixel text-[14px]">
+            <Icon name="check" size={20} />5 tam gün = <Icon name="ticket" size={18} />
+          </div>
+        </div>
+      </section>
+
+      {incoming.map(r => (
+        <section key={r.id} className="panel p-3 flex items-center gap-3 dropin !border-ticket">
+          {partner && <Portrait cls={partner.class} look={partner.look} gear={partner.equipped} size={48} />}
+          <div className="flex-1 font-pixel text-[16px] leading-tight flex items-center gap-1"><Icon name="ticket" size={22} />{partner?.name ?? ''}</div>
+          <button className="pbtn pbtn-green !px-3" disabled={busy} onClick={() => void act(() => respondRedemption(r.id, 'approve'), () => { sfx.victory(); fx.confetti(40) })} aria-label="Onayla"><Icon name="check" size={24} /></button>
+          <button className="pbtn pbtn-dark !px-3" disabled={busy} onClick={() => void act(() => respondRedemption(r.id, 'not_now'), () => sfx.undo())} aria-label="Sonra">✕</button>
+        </section>
+      ))}
+
+      {mine.map(r => (
+        <section key={r.id} className="panel-dark p-3 flex items-center gap-3">
+          <Icon name="ticket" size={32} className="blinkdot" />
+          <span className="flex-1 font-pixel text-ink2">Onay bekliyor…</span>
+          <button className="pbtn pbtn-dark !min-h-[40px] text-[14px]" disabled={busy} onClick={() => void act(() => respondRedemption(r.id, 'withdraw'), () => sfx.undo())}>Geri çek</button>
+        </section>
+      ))}
+
+      {history.length > 0 && (
+        <section className="panel-dark p-2 space-y-1">
+          {history.map(r => {
+            const who = r.requestedBy === me.id ? me : partner
+            return (
+              <div key={r.id} className="flex items-center gap-2 font-pixel text-[14px]">
+                {who && <Portrait cls={who.class} look={who.look} gear={who.equipped} size={24} />}
+                <Icon name="ticket" size={18} /><Icon name="check" size={16} />
+                <span className="ml-auto text-ink2 text-[12px]">{new Date(r.resolvedAt ?? r.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+              </div>
+            )
+          })}
+        </section>
+      )}
+    </div>
+  )
+}

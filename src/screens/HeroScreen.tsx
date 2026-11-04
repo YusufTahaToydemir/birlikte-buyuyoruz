@@ -1,0 +1,131 @@
+// Kahraman: büyük karakter vitrini, güç değerleri, ekipman yuvaları, rozetler.
+import { useState } from 'react'
+import { ACHIEVEMENTS, CAT_INFO, equipItem, SHOP, type Category, type Slot } from '../lib/game'
+import { CLASS_INFO, type Gear } from '../game/art/hero'
+import { HeroSprite, Icon, PetSprite } from '../game/Sprite'
+import { fx } from '../game/fx'
+import { sfx } from '../game/sfx'
+import { Bar, Sheet, useGame } from '../game/ui'
+
+const SLOTS: Array<{ slot: Slot; icon: string; kind: string }> = [
+  { slot: 'weapon', icon: 'sword', kind: 'WEAPON' },
+  { slot: 'armor', icon: 'shield', kind: 'ARMOR' },
+  { slot: 'head', icon: 'helmet', kind: 'HEAD' },
+  { slot: 'cape', icon: 'cape', kind: 'CAPE' },
+  { slot: 'pet', icon: 'pet', kind: 'PET' },
+]
+const CATS: Category[] = ['BODY', 'MIND', 'SPIRIT', 'ORDER']
+
+export function HeroScreen() {
+  const { game, run } = useGame()
+  const h = game.hero!
+  const [slot, setSlot] = useState<Slot | null>(null)
+  const [pose, setPose] = useState<'joy' | undefined>()
+  const info = CLASS_INFO[h.class]
+  const maxStat = Math.max(10, ...CATS.map(c => h.stats[c] ?? 0))
+  const tier = (s: Slot) => (s === 'weapon' ? h.equipped.weapon ?? 0 : s === 'armor' ? h.equipped.armor ?? 0 : 0)
+
+  const owned = (s: Slot) => {
+    const kind = SLOTS.find(x => x.slot === s)!.kind
+    return SHOP.filter(i => i.kind === kind && (game.inventory[i.key] ?? 0) > 0)
+  }
+
+  async function equip(s: Slot, value: string | number | null) {
+    sfx.buy()
+    const g = await run(() => equipItem(s, value))
+    if (g) { setSlot(null); setPose('joy'); fx.flash('rgba(255,215,90,.25)'); window.setTimeout(() => setPose(undefined), 900) }
+  }
+
+  const tap = (e: React.MouseEvent) => { sfx.cheer(); setPose('joy'); fx.burst(e.clientX, e.clientY, info.color); window.setTimeout(() => setPose(undefined), 700) }
+
+  return (
+    <div className="space-y-3">
+      {/* Vitrin */}
+      <section className="panel relative overflow-hidden" style={{ background: `radial-gradient(circle at 50% 60%, ${info.color}33, transparent 60%), #241c3e` }}>
+        <div className="absolute inset-[-60%] rays opacity-30 pointer-events-none" />
+        <div className="relative flex flex-col items-center pt-3 pb-2">
+          <div className="font-pixel text-2xl">{h.name}</div>
+          <div className="font-pixel text-[15px] flex items-center gap-2" style={{ color: info.color }}>
+            {info.name}<span className="text-ink2">·</span><span className="text-magic">Seviye {h.level}</span>
+          </div>
+          <button className="relative mt-1" onClick={tap} aria-label="Kahraman">
+            <HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={5} pose={pose} />
+            <div className="absolute bottom-[6px] left-1/2 -translate-x-1/2 w-[130px] h-[14px] rounded-[50%] bg-black/35 -z-10" />
+          </button>
+          {h.equipped.pet && <div className="absolute right-6 bottom-6"><PetSprite petKey={h.equipped.pet} scale={3} /></div>}
+          <div className="flex gap-2 mt-1">
+            <span className="panel-dark px-2 py-1 font-pixel flex items-center gap-1"><Icon name="flame" size={18} />{h.streak}</span>
+            <span className="panel-dark px-2 py-1 font-pixel flex items-center gap-1 text-gold"><Icon name="trophy" size={18} />{h.bestStreak}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Ekipman */}
+      <section className="grid grid-cols-5 gap-2" aria-label="Ekipman">
+        {SLOTS.map(s => {
+          const eq = s.slot === 'weapon' || s.slot === 'armor' ? tier(s.slot) > 0 : !!h.equipped[s.slot]
+          return (
+            <button key={s.slot} className={`panel aspect-square grid place-items-center relative ${eq ? '!bg-panel2' : ''}`} onClick={() => { sfx.click(); setSlot(s.slot) }} aria-label={s.slot}>
+              {s.slot === 'pet' && h.equipped.pet ? <PetSprite petKey={h.equipped.pet} scale={2.4} className="!animate-none" /> : <Icon name={s.icon} size={36} className={eq ? '' : 'opacity-35'} />}
+              {(s.slot === 'weapon' || s.slot === 'armor') && tier(s.slot) > 0 && <span className="absolute bottom-0.5 right-1 font-pixel text-[12px] text-gold">+{tier(s.slot)}</span>}
+            </button>
+          )
+        })}
+      </section>
+
+      {/* Güç değerleri */}
+      <section className="panel p-3 space-y-2" aria-label="Güç değerleri">
+        {CATS.map(c => (
+          <div key={c} className="flex items-center gap-2">
+            <Icon name={CAT_INFO[c].icon} size={26} />
+            <span className="font-pixel w-[58px] text-[15px]">{CAT_INFO[c].name}</span>
+            <Bar value={h.stats[c] ?? 0} max={maxStat} color={CAT_INFO[c].color} label={h.stats[c] ?? 0} className="flex-1" h={20} />
+          </div>
+        ))}
+      </section>
+
+      {/* Rozetler */}
+      <section className="panel p-3">
+        <div className="font-pixel text-lg mb-2 flex items-center gap-2"><Icon name="trophy" size={22} />{game.achievements.length}/{ACHIEVEMENTS.length}</div>
+        <div className="grid grid-cols-6 gap-1.5">
+          {ACHIEVEMENTS.map(a => {
+            const got = game.achievements.includes(a.key)
+            return (
+              <div key={a.key} className={`panel-dark aspect-square grid place-items-center relative ${got ? '' : 'opacity-40'}`} title={a.name}>
+                <Icon name={got ? a.icon : 'lock'} size={28} className={got ? '' : 'grayscale'} />
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <Sheet open={slot !== null} onClose={() => setSlot(null)} title={slot ? <span className="flex items-center gap-2"><Icon name={SLOTS.find(s => s.slot === slot)!.icon} size={26} /></span> : null}>
+        {slot && <SlotPicker slot={slot} />}
+      </Sheet>
+    </div>
+  )
+
+  function SlotPicker({ slot }: { slot: Slot }) {
+    const items = owned(slot)
+    const isTier = slot === 'weapon' || slot === 'armor'
+    const options: Array<{ key: string; label: string; value: string | number | null; gear: Gear; active: boolean }> = [
+      { key: 'none', label: isTier ? 'Başlangıç' : 'Yok', value: isTier ? 0 : null, gear: { ...h.equipped, [slot]: isTier ? 0 : undefined }, active: isTier ? tier(slot) === 0 : !h.equipped[slot] },
+      ...items.map(i => ({ key: i.key, label: i.name, value: isTier ? i.tier : i.key, gear: { ...h.equipped, [slot]: isTier ? i.tier : i.key }, active: isTier ? tier(slot) === i.tier : h.equipped[slot] === i.key })),
+    ]
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          {options.map(o => (
+            <button key={o.key} className={`panel p-1 flex flex-col items-center ${o.active ? '!border-gold' : ''}`} onClick={() => !o.active && void equip(slot, o.value)}>
+              {slot === 'pet' ? (o.value ? <PetSprite petKey={String(o.value)} scale={3} /> : <Icon name="pet" size={48} className="opacity-30" />)
+                : <HeroSprite cls={h.class} look={h.look} gear={o.gear} scale={2} animate={false} />}
+              <span className="font-pixel text-[12px] text-center leading-tight mt-1">{o.label}</span>
+              {o.active && <Icon name="check" size={18} />}
+            </button>
+          ))}
+        </div>
+        {items.length === 0 && <p className="font-pixel text-ink2 text-center flex items-center justify-center gap-2"><Icon name="chest" size={22} />Hazine'den al</p>}
+      </div>
+    )
+  }
+}
