@@ -57,15 +57,15 @@ begin
   r := get_season();
   if (r->>'n')::int <> bb_season_n(v_today) or (r->>'daysLeft')::int < 1 or jsonb_typeof(r->'summary'->'heroes') <> 'object' then raise exception 'sezon json %', r; end if;
   if (r->'summary'->>'castle')::int <> 5 then raise exception 'sezon kale'; end if;
-  -- geçmiş sezon simülasyonu: ilk günü bir önceki sezona taşı
-  insert into hero_days (user_id, local_date, difficulty, closed, all_done) values (a, bb_season_start(bb_season_n(v_today)) - 10, 2, true, true);
+  -- geçmiş sezon simülasyonu: "bugün" 2. sezonun 5. günü olsun → 1. sezon kapanır
   select gold into v_gold from heroes where user_id = a;
-  perform bb_close_seasons(cp);
+  perform bb_close_seasons(cp, bb_season_start(bb_season_n(v_today) + 1) + 4);
   if (select count(*) from seasons where couple_id = cp) <> 1 then raise exception 'sezon kapanışı'; end if;
   if (select gold from heroes where user_id = a) <> v_gold + 250 then raise exception 'sezon altını'; end if;
   if (select count(*) from hero_events where kind = 'SEASON_END' and user_id in (a, b)) <> 2 then raise exception 'sezon olayı'; end if;
-  perform bb_close_seasons(cp);
+  perform bb_close_seasons(cp, bb_season_start(bb_season_n(v_today) + 1) + 4);
   if (select count(*) from seasons where couple_id = cp) <> 1 or (select gold from heroes where user_id = a) <> v_gold + 250 then raise exception 'sezon tekrar'; end if;
+  if (select (summary->>'castle')::int from seasons where couple_id = cp) <> 5 or (select summary->'heroes'->a::text->>'fullDays' from seasons where couple_id = cp) is null then raise exception 'sezon özeti'; end if;
   r := get_season();
   if jsonb_array_length(r->'past') <> 1 then raise exception 'geçmiş sezon'; end if;
   res := res || E'\nsezon · özet; önceki sezon kapanınca kayıt + 250 altın + olay, ikinci çağrı tekrarlamaz ✓';
@@ -92,7 +92,7 @@ begin
   -- 4) Yetkiler
   if not has_function_privilege('authenticated', 'castle_build(text)', 'execute') or not has_function_privilege('authenticated', 'get_season()', 'execute')
      or not has_function_privilege('authenticated', 'push_subscribe(text, text, text)', 'execute') or not has_function_privilege('authenticated', 'set_reminder(int)', 'execute') then raise exception 'yetki eksik'; end if;
-  if has_function_privilege('authenticated', 'bb_push_queue()', 'execute') or has_function_privilege('authenticated', 'bb_close_seasons(uuid)', 'execute') or has_table_privilege('authenticated', 'push_subs', 'select') then raise exception 'fazla yetki'; end if;
+  if has_function_privilege('authenticated', 'bb_push_queue()', 'execute') or has_function_privilege('authenticated', 'bb_close_seasons(uuid, date)', 'execute') or has_table_privilege('authenticated', 'push_subs', 'select') then raise exception 'fazla yetki'; end if;
   res := res || E'\nyetki · yalnızca RPC listesi; push kuyruğu dışarıya kapalı ✓';
 
   raise exception E'TÜM TESTLER GEÇTİ (geri alındı):%', res;

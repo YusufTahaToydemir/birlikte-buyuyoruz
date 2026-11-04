@@ -204,13 +204,14 @@ begin
 end $$;
 
 -- Sezon sonu: özet kaydı + ikisine de 250 altın + olay
-create or replace function bb_close_seasons(p_couple uuid) returns void
+drop function if exists bb_close_seasons(uuid);
+create or replace function bb_close_seasons(p_couple uuid, p_today date default null) returns void
 language plpgsql security definer set search_path = public as $$
 declare c couples; v_today date; n int; k int; v_first date; sm jsonb; m record;
 begin
   select * into c from couples where id = p_couple;
   if c.id is null or c.status <> 'ACTIVE' then return; end if;
-  v_today := bb_local_date(now(), c.timezone);
+  v_today := coalesce(p_today, bb_local_date(now(), c.timezone));
   n := bb_season_n(v_today);
   select min(hd.local_date) into v_first from hero_days hd join memberships mm on mm.user_id = hd.user_id where mm.couple_id = p_couple;
   if v_first is null then return; end if;
