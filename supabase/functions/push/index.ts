@@ -1,24 +1,26 @@
 // Kyron · Web Push gönderici. pg_cron her 5 dakikada bir çağırır (x-kyron-secret başlığıyla).
 // Kuyruğu bb_push_queue() üretir (olaylar + akşam hatırlatması); ölü abonelikler bb_push_result ile silinir.
-// Gizli değerler (Edge Function secrets): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, PUSH_SECRET. SUPABASE_URL / SERVICE_ROLE otomatik gelir.
+// VAPID anahtarları ve paylaşılan sır veritabanındaki app_secrets tablosundan (bb_push_secrets, yalnızca service_role) okunur.
+// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY Edge Function ortamına otomatik gelir.
 import webpush from 'npm:web-push@3.6.7'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? ''
-const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
-const SECRET = Deno.env.get('PUSH_SECRET') ?? ''
 const url = Deno.env.get('SUPABASE_URL')!
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-webpush.setVapidDetails('mailto:kyron@example.com', VAPID_PUBLIC, VAPID_PRIVATE)
-
 type Sub = { endpoint: string; p256dh: string; auth: string }
 type Item = { user: string; title: string; body: string; tag: string; subs: Sub[] | null }
+type Secrets = { vapidPublic: string | null; vapidPrivate: string | null; pushSecret: string | null }
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('ok', { status: 200 })
-  if (!SECRET || req.headers.get('x-kyron-secret') !== SECRET) return new Response('forbidden', { status: 403 })
   const db = createClient(url, serviceKey, { auth: { persistSession: false } })
+  const { data: sec, error: secErr } = await db.rpc('bb_push_secrets')
+  const s = (sec ?? {}) as Secrets
+  if (secErr || !s.pushSecret || !s.vapidPublic || !s.vapidPrivate) return new Response(JSON.stringify({ error: 'secrets missing' }), { status: 500 })
+  if (req.headers.get('x-kyron-secret') !== s.pushSecret) return new Response('forbidden', { status: 403 })
+  webpush.setVapidDetails('mailto:kyron@example.com', s.vapidPublic, s.vapidPrivate)
+
   const { data, error } = await db.rpc('bb_push_queue')
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 })
   const items = (data ?? []) as Item[]
@@ -26,13 +28,13 @@ Deno.serve(async (req) => {
   let sent = 0
   for (const it of items) {
     const payload = JSON.stringify({ title: it.title, body: it.body, tag: it.tag })
-    for (const s of it.subs ?? []) {
+    for (const sub of it.subs ?? []) {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 })
-        ok.push(s.endpoint); sent++
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload, { TTL: 3600 })
+        ok.push(sub.endpoint); sent++
       } catch (e) {
         const code = (e as { statusCode?: number }).statusCode
-        if (code === 404 || code === 410) dead.push(s.endpoint)
+        if (code === 404 || code === 410) dead.push(sub.endpoint)
       }
     }
   }
