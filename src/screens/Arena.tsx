@@ -175,7 +175,7 @@ function InviteCard() {
   const share = async () => {
     if (!link) return
     try {
-      if (navigator.share) await navigator.share({ title: 'Birlikte Büyüyoruz', text: 'Takımıma katıl!', url: link })
+      if (navigator.share) await navigator.share({ title: 'Kyron', text: 'Takımıma katıl!', url: link })
       else { await navigator.clipboard.writeText(link); sfx.coin() }
     } catch { /* iptal */ }
   }

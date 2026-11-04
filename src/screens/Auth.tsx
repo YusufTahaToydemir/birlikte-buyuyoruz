@@ -1,7 +1,8 @@
 // Başlık ekranı: giriş, kurulum/davet ile hesap açma, kurtarma kodu.
 import { useEffect, useState, type ReactNode } from 'react'
 import { errorText, recoverWithCode, signIn, signUp } from '../lib/game'
-import { BossSprite, HeroSprite, Icon, SceneBg } from '../game/Sprite'
+import { BossSprite, HeroSprite, Icon, SceneAmbient, SceneBg } from '../game/Sprite'
+import { Emblem, Wordmark } from '../game/Logo'
 import { sfx } from '../game/sfx'
 import { music } from '../game/music'
 
@@ -24,12 +25,18 @@ export function Auth({ hash }: { hash: string }) {
 
   return (
     <div className="px-3 pt-[calc(12px+env(safe-area-inset-top))] pb-8 space-y-4">
-      <section className="panel overflow-hidden relative h-[220px]">
+      <section className="panel overflow-hidden relative h-[384px]">
         <SceneBg className="absolute inset-0" seed={3} />
-        <div className="absolute left-[6%] bottom-[12px]"><HeroSprite cls="WARRIOR" look={{ gender: 'M', hair: 2, skin: 1, hairColor: 0 }} gear={{ weapon: 2, armor: 2 }} scale={2.6} /></div>
-        <div className="absolute left-[33%] bottom-[12px]"><HeroSprite cls="HEALER" look={{ gender: 'F', hair: 2, skin: 0, hairColor: 4 }} gear={{ weapon: 2, armor: 2, head: 'head_flower' }} scale={2.6} /></div>
-        <div className="absolute right-[5%] bottom-[18px]"><BossSprite bossKey="dragon_green" scale={2.1} className="boss-idle" /></div>
-        <h1 className="absolute top-3 left-0 right-0 text-center font-pixel text-[34px] leading-none text-gold drop-shadow-[0_3px_0_#160f22]" style={{ WebkitTextStroke: '1px #160f22' }}>Birlikte<br />Büyüyoruz</h1>
+        <SceneAmbient />
+        <div className="absolute inset-0 title-veil" aria-hidden="true" />
+        <h1 className="absolute top-4 left-0 right-0 flex flex-col items-center gap-1">
+          <Emblem size={120} />
+          <Wordmark size={64} />
+          <span className="font-pixel text-[17px] text-ink mt-2 fadeup drop-shadow-[0_2px_0_#160f22]" style={{ animationDelay: '.9s' }}>İki kahraman · tek macera</span>
+        </h1>
+        <div className="absolute left-[4%] bottom-[12px] slide-l"><HeroSprite cls="WARRIOR" look={{ gender: 'M', hair: 2, skin: 1, hairColor: 0 }} gear={{ weapon: 3, armor: 3, cape: 'cape_blue' }} scale={2.4} /></div>
+        <div className="absolute left-[30%] bottom-[12px] slide-l"><HeroSprite cls="HEALER" look={{ gender: 'F', hair: 2, skin: 0, hairColor: 4 }} gear={{ weapon: 3, armor: 3, head: 'head_flower', cape: 'cape_red' }} scale={2.4} /></div>
+        <div className="absolute right-[4%] bottom-[16px] slide-r"><BossSprite bossKey="dragon_red" scale={2} className="boss-idle" /></div>
       </section>
       {mode === 'login' && <LoginForm onRecover={() => setMode('recover')} />}
       {mode === 'recover' && <RecoverForm onCancel={() => setMode('login')} />}

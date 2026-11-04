@@ -3,15 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#815266" />
+    <meta name="theme-color" content="#17112a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Birlikte" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kyron" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-    <title>Birlikte Büyüyoruz</title>
+    <link rel="icon" type="image/png" href="icons/favicon-64.png" />
+    <title>Kyron</title>
+    <style>
+      /* JS yüklenene kadar görünen açılış (React gelince aynı yerde Splash çizer) */
+      html, body { background: #17112a; margin: 0; }
+      .boot { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding-bottom: 64px; box-sizing: border-box;
+        background: radial-gradient(1200px 600px at 50% -200px, #3a2a6a 0%, transparent 60%), #17112a; }
+      .boot img { width: 128px; height: 128px; image-rendering: pixelated; animation: bootbob 1.8s steps(4) infinite; }
+      .boot b { font: 700 56px/1 monospace; letter-spacing: .06em; color: #ffcc3a; text-shadow: 0 3px 0 #8a3e0a, 0 6px 0 #160f22; }
+      @keyframes bootbob { 50% { transform: translateY(-4px) } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" aria-label="Yükleniyor"><img src="icons/emblem.png" alt="" /><b>KYRON</b></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

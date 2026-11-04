@@ -17,9 +17,10 @@ import { EventOverlay } from './game/Events'
 import { FxLayer } from './game/fx'
 import { Icon, Portrait } from './game/Sprite'
 import { setSoundEnabled, sfx } from './game/sfx'
-import { Bar, GameContext, Spinner, ToastHost, toastError, type GameCtx, type TabId } from './game/ui'
+import { Splash } from './game/Logo'
+import { Bar, GameContext, ToastHost, toastError, type GameCtx, type TabId } from './game/ui'
 
-export const APP_NAME = 'Birlikte Büyüyoruz'
+export const APP_NAME = 'Kyron'
 
 function useHash() {
   const [hash, setHash] = useState(window.location.hash)
@@ -45,7 +46,7 @@ export function App() {
   return (
     <div id="game-root" className="min-h-dvh bg-stars">
       <div className="mx-auto max-w-[520px] min-h-dvh relative">
-        {session === undefined ? <Spinner /> : !session ? <Auth hash={hash} /> : <GameRoot key={session.user.id} />}
+        {session === undefined ? <Splash /> : !session ? <Auth hash={hash} /> : <GameRoot key={session.user.id} />}
       </div>
       <FxLayer />
       <ToastHost />
@@ -103,7 +104,7 @@ function GameRoot() {
       <button className="pbtn pbtn-gold w-full" onClick={() => void refresh()}>Tekrar dene</button>
       <button className="pbtn pbtn-dark w-full" onClick={() => void signOut()}>Çıkış</button>
     </div>
-  ) : <Spinner />
+  ) : <Splash />
 
   if (!game.hero) return <CreateHero onDone={setGame} />
 

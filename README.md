@@ -1,4 +1,4 @@
-# Birlikte Büyüyoruz
+# Kyron
 
 İki kişilik, Türkçe, telefona kurulabilen **piksel RPG** (PWA). Oyun her gün görev verir; görevi yapınca tek dokunuşla işaretlersin, kahramanın XP, altın ve güç kazanır, haftanın ortak canavarına hasar vurur.
 
