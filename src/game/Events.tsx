@@ -1,7 +1,7 @@
 // Olay katmanı: seviye atlama (ödüller, unvan, açılan eşyalar), hasar, bayılma, kombo, boss, bilet parçası, rozet,
 // partnerden gelenler (alkış, şifa, altın, düello, kelime, birlikte etkinlik).
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ACHIEVEMENTS, markEventsSeen, SKILLS, TICKET_TIERS, titleFor, unlocksAt, type GameEvent, type TicketTier } from '../lib/game'
+import { ACHIEVEMENTS, markEventsSeen, SKILLS, TICKET_TIERS, titleFor, unlocksAt, type DuelGame, type GameEvent, type TicketTier } from '../lib/game'
 import type { HeroClass } from './art/hero'
 import { GAME_INFO } from './minigames'
 import { BossSprite, HeroSprite, Icon, PetSprite } from './Sprite'
@@ -41,6 +41,13 @@ export function EventOverlay() {
       case 'STREAK_SAVED': sfx.heal(); fx.flash('rgba(76,201,240,.35)'); fx.ring(mid.x, mid.y, '#4cc9f0'); break
       case 'SKILL_USED': sfx.roar(); fx.flash('rgba(185,138,255,.35)'); fx.ring(mid.x, mid.y, '#b98aff'); break
       case 'TWIN_BONUS': sfx.coin(); fx.sparkle(mid.x, mid.y, 10, '#ff8ab5', 60); break
+      case 'LETTER': sfx.open(); fx.sparkle(mid.x, mid.y, 14, '#ff8ab5', 80); fx.flash('rgba(255,138,181,.25)'); break
+      case 'THANKS': sfx.cheer(); break
+      case 'THANKS_BOTH': sfx.victory(); fx.confetti(60); break
+      case 'QUIZ_RESULT': sfx.victory(); fx.confetti(90); fx.ring(mid.x, mid.y, '#ff8ab5'); break
+      case 'QUIZ_WAIT': case 'RAID_WAIT': sfx.roar(); fx.shake(); break
+      case 'RAID_DONE': sfx.hit(); window.setTimeout(() => sfx.victory(), 300); fx.shake('game-root', true); fx.confetti(70); break
+      case 'WORD_HINT': sfx.sparkle(); break
       case 'ACHIEVEMENT': sfx.ticket(); fx.flash('rgba(185,138,255,.4)'); fx.sparkle(mid.x, mid.y, 10, '#d8c4ff', 70); break
       case 'CHEER': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8); break
       case 'HEAL': sfx.heal(); fx.ring(mid.x, mid.y, '#5bd17c'); break
@@ -230,6 +237,54 @@ export function EventOverlay() {
       art = <div className="relative"><Icon name={String(d.icon ?? 'check')} size={96} /><Icon name="heart" size={40} className="absolute -right-4 -top-2 glow popin" /></div>
       title = 'ÇİFT!'; color = '#ff8ab5'
       sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">İkiniz de "{String(d.title)}" yaptınız</span>{reward(undefined, d.gold)}</span>
+      break
+    case 'LETTER':
+      art = (
+        <div className="panel p-3 relative max-w-[300px]" style={{ background: 'repeating-linear-gradient(0deg, #1f1838 0 26px, #2a2146 26px 28px)' }}>
+          <p className="font-pixel text-xl leading-[28px] text-ink text-left">{String(d.text)}</p>
+          <Icon name={String(d.stamp ?? 'heart')} size={36} className="absolute -right-3 -bottom-3 glow popin" />
+        </div>
+      )
+      title = 'MEKTUP!'; color = '#ff8ab5'; rays = false
+      sub = <span className="text-ink2">{cur.from} sana yazdı</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('games')}>Cevap yaz</button>
+      break
+    case 'THANKS':
+      art = <Icon name="sparkle" size={96} className="glow" />; title = 'Şükür'; color = '#5bd17c'; rays = false
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{cur.from}: « {String(d.text)} »</span><span className="text-ink2 text-[15px]">Sen de yazarsan +10 altın</span></span>
+      action = <button className="pbtn pbtn-green flex-1" onClick={() => goTo('games')}>Ben de yazayım</button>
+      break
+    case 'THANKS_BOTH':
+      art = <div className="flex items-end gap-2"><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={2.4} pose="joy" />{game.partner && <div style={{ transform: 'scaleX(-1)' }}><HeroSprite cls={game.partner.class} look={game.partner.look} gear={game.partner.equipped} scale={2.4} pose="joy" /></div>}</div>
+      title = 'İKİ ŞÜKÜR'; color = '#5bd17c'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink text-[15px]">« {String(d.mine)} » · « {String(d.theirs)} »</span>{reward(d.xp, d.gold)}</span>
+      break
+    case 'QUIZ_RESULT': {
+      const m = Number(d.matches)
+      art = <div className="flex flex-col items-center gap-1"><div className="font-pixel text-7xl text-gold drop-shadow-[0_4px_0_#000]">{m}<span className="text-3xl text-ink2">/10</span></div><div className="flex gap-0.5">{Array.from({ length: 10 }, (_, i) => <Icon key={i} name="heart" size={18} className={i < m ? 'popin' : 'opacity-25 grayscale'} />)}</div></div>
+      title = m >= 8 ? 'KALPTEN KALBE!' : m >= 5 ? 'İYİ TANIYORSUNUZ' : 'DAHA ÇOK SOHBET'; color = '#ff8ab5'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Çift testi tamamlandı</span>{reward(d.xp, d.gold)}<span className="text-hp flex items-center gap-1"><Icon name="sword" size={16} />-{String(d.damage)} canavar</span></span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('games')}>Sonuçlar</button>
+      break
+    }
+    case 'QUIZ_WAIT':
+      art = <Icon name="puzzle" size={96} className="glow bob" />; title = 'Çift Testi'; color = '#b98aff'; rays = false
+      sub = <span className="text-ink">{cur.from} cevapladı, sıra sende</span>
+      action = <button className="pbtn pbtn-purple flex-1" onClick={() => goTo('games')}>Cevapla</button>
+      break
+    case 'RAID_WAIT':
+      art = <Icon name={GAME_INFO[(d.game as DuelGame) ?? 'TAP']?.icon ?? 'swords'} size={96} className="glow bob" />; title = 'BASKIN!'; color = '#ff4d6d'; rays = false
+      sub = <span className="text-ink">{cur.from} {String(d.score)} puan aldı · sen de oyna, canavara birlikte vurun</span>
+      action = <button className="pbtn pbtn-red flex-1" onClick={() => goTo('games')}>Oyna</button>
+      break
+    case 'RAID_DONE':
+      art = <div className="relative">{game.boss && <BossSprite bossKey={game.boss.key} scale={3} className="boss-hit" />}<span className="absolute -top-2 left-1/2 -translate-x-1/2 font-pixel text-4xl text-hp drop-shadow-[0_3px_0_#000] popin">-{String(d.damage)}</span></div>
+      title = 'BASKIN TAMAM'; color = '#ff4d6d'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{String(d.me)} + {String(d.them)} puan</span>{reward(10, 10)}</span>
+      break
+    case 'WORD_HINT':
+      art = <span className="font-pixel text-7xl text-gold drop-shadow-[0_4px_0_#000]">{String(d.letter)}</span>; title = 'İpucu'; color = '#ffcc3a'; rays = false
+      sub = <span className="text-ink">{cur.from} {String(d.pos)}. harfi açtı</span>
       break
     default:
       art = <Icon name="sparkle" size={90} />; title = cur.kind

@@ -191,7 +191,12 @@ export const deleteAccount = () => rpc<{ ok: boolean }>('delete_account')
 export const disconnectCouple = () => rpc<Game>('disconnect_couple')
 
 // ---------- Oyunlar (düello, Günün Kelimesi, birlikte) ----------
-export type DuelGame = 'TAP' | 'MEMORY' | 'TIMING' | 'WORDS' | 'SLIDE'
+export type DuelGame = 'TAP' | 'MEMORY' | 'TIMING' | 'WORDS' | 'SLIDE' | 'MATH' | 'COLOR'
+export interface QuizQuestion { id: number; text: string; options: string[]; custom: boolean; me: { self: number; guess: number } | null; partner: { self: number; guess: number } | null }
+export interface Quiz { week: string; questions: QuizQuestion[]; mineDone: boolean; theirsDone: boolean; finished: boolean; matches: number | null; history: Array<{ week: string; matches: number }> }
+export interface Raid { date: string; game: DuelGame; seed: number; scores: Record<string, number>; damage: number | null; finished: boolean }
+export interface Note { id: string; author: string; kind: 'LETTER' | 'THANKS'; text: string; stamp: string | null; date: string; at: string }
+export interface WordHint { pos: number; letter: string; by: string }
 export interface Duel { id: string; game: DuelGame; seed: number; createdBy: string | null; opponent: string | null; scoreA: number | null; scoreB: number | null; status: 'OPEN' | 'DONE' | 'EXPIRED' | 'CANCELLED'; winner: string | null; createdAt: string; finishedAt: string | null; expiresAt: string }
 export interface WordGuess { by: string; word: string; res: string; at: string }
 export interface Together { code: string; icon: string; title: string; status: 'PENDING' | 'DONE' | null; proposedBy: string | null; confirmedAt: string | null }
@@ -199,9 +204,12 @@ export interface Games {
   duels: Duel[]
   record: { me: number; partner: number; draws: number }
   duelRewardsLeft: number
-  word: { date: string; guesses: WordGuess[]; solved: boolean; finished: boolean; answer: string | null; solvedDays: number } | null
+  word: { date: string; guesses: WordGuess[]; solved: boolean; finished: boolean; answer: string | null; solvedDays: number; hints: WordHint[] } | null
   together: Together[]
   togetherDone: number
+  quiz: Quiz | null
+  raid: Raid | null
+  notes: { letterSent: boolean; thanksMe: string | null; thanksPartner: string | null; total: number }
   config: { togetherXP: number; togetherGold: number; togetherDamage: number }
 }
 export const getGames = () => rpc<Games>('get_games')
@@ -211,6 +219,14 @@ export const duelCancel = (id: string) => rpc<Games>('duel_cancel', { p_duel: id
 export const wordGuess = (word: string) => rpc<Games>('word_guess', { p_word: word })
 export const togetherMark = (code: string) => rpc<Games>('together_mark', { p_code: code })
 export const togetherCancel = (code: string) => rpc<Games>('together_cancel', { p_code: code })
+export const quizAnswer = (answers: Record<number, { self: number; guess: number }>) => rpc<Games>('quiz_answer', { p_answers: answers })
+export const quizAdd = (text: string, options: string[]) => rpc<Games>('quiz_add', { p_text: text, p_options: options })
+export const noteWrite = (kind: 'LETTER' | 'THANKS', text: string, stamp: string | null = null) => rpc<Games>('note_write', { p_kind: kind, p_text: text, p_stamp: stamp })
+export const getNotes = (before: string | null = null, limit = 40) => rpc<Note[]>('get_notes', { p_before: before, p_limit: limit })
+export const raidPlay = (score: number) => rpc<Games>('raid_play', { p_score: Math.round(score) })
+export const wordHint = () => rpc<Games>('word_hint')
+/** Mektup damgaları (piksel ikon adları) */
+export const STAMPS = ['heart', 'flower', 'star', 'sun', 'moon', 'gift', 'sparkle', 'coin']
 
 // ---------- Dükkan kataloğu (sunucudakiyle aynı) ----------
 export type Slot = 'weapon' | 'armor' | 'head' | 'cape' | 'pet'
@@ -298,6 +314,10 @@ export const ACHIEVEMENTS: Array<{ key: string; name: string; icon: string }> = 
   { key: 'SKILL_1', name: 'İlk Yetenek', icon: 'bolt' },
   { key: 'SKILL_10', name: 'Yetenek Ustası', icon: 'rune' },
   { key: 'BESTIARY', name: 'Bestiyer Tamam', icon: 'skull' },
+  { key: 'QUIZ_1', name: 'İlk Çift Testi', icon: 'puzzle' },
+  { key: 'QUIZ_PERFECT', name: 'Kalpten Kalbe', icon: 'heart' },
+  { key: 'LETTER_10', name: 'Mektup Dostu', icon: 'quill' },
+  { key: 'RAID_5', name: 'Baskıncı', icon: 'swords' },
 ]
 
 export const CAT_INFO: Record<Category, { name: string; icon: string; color: string }> = {

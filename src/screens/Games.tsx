@@ -1,13 +1,14 @@
 // Oyunlar: eşinle düello (5 mini oyun), Günün Kelimesi (ortak bulmaca), birlikte etkinlikler.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { duelCancel, duelCreate, duelPlay, getGames, togetherCancel, togetherMark, wordGuess, type Duel, type DuelGame, type Games as GamesState, type Hero } from '../lib/game'
+import { duelCancel, duelCreate, duelPlay, getGames, raidPlay, togetherCancel, togetherMark, wordGuess, wordHint, type Duel, type DuelGame, type Games as GamesState, type Hero } from '../lib/game'
 import { renderBoss } from '../game/art/bosses'
 import { drawScene, timeOfDay } from '../game/art/scene'
-import { DUEL_GAMES, GAME_INFO, MemoryGame, newSeed, SlideGame, TapGame, TimingGame, WordsGame } from '../game/minigames'
+import { ColorGame, DUEL_GAMES, GAME_INFO, MathGame, MemoryGame, newSeed, SlideGame, TapGame, TimingGame, WordsGame } from '../game/minigames'
 import { HeroSprite, Icon, Portrait } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Sheet, toastError, useGame } from '../game/ui'
+import { NotesCard, QuizCard, RaidCard } from './Together'
 
 /** Yapboz resmi: manzara + haftanın canavarı (96x96) */
 function puzzleImage(bossKey: string, seed: number) {
@@ -20,7 +21,7 @@ function puzzleImage(bossKey: string, seed: number) {
   return c.toDataURL()
 }
 
-type Play = { game: DuelGame; seed: number; mode: 'practice' | 'challenge' | 'respond'; duel?: Duel }
+type Play = { game: DuelGame; seed: number; mode: 'practice' | 'challenge' | 'respond' | 'raid'; duel?: Duel }
 
 export function online(lastSeen: string | null | undefined, serverTime: string) {
   return !!lastSeen && new Date(serverTime).getTime() - new Date(lastSeen).getTime() < 3 * 60 * 1000
@@ -77,6 +78,9 @@ export function Games() {
           <button className="relative pbtn pbtn-gold" onClick={() => { sfx.open(); setPlay({ game: d.game, seed: d.seed, mode: 'respond', duel: d }) }}><Icon name="swords" size={22} />Oyna</button>
         </section>
       ))}
+
+      {/* Ortak baskın */}
+      {partner && g && <RaidCard g={g} me={me} partner={partner} onPlay={() => setPlay({ game: g.raid!.game, seed: g.raid!.seed, mode: 'raid' })} />}
 
       {/* Günün Kelimesi */}
       {partner && word && (
@@ -142,6 +146,9 @@ export function Games() {
         </section>
       )}
 
+      {partner && g && <QuizCard g={g} me={me} partner={partner} busy={busy} act={act} />}
+      {partner && g && <NotesCard g={g} me={me} partner={partner} busy={busy} act={act} />}
+
       {/* Mini oyunlar */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
@@ -150,7 +157,7 @@ export function Games() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           {DUEL_GAMES.map((k, i) => (
-            <button key={k} className={`panel p-2 flex items-center gap-2 text-left relative overflow-hidden ${i === 4 ? 'col-span-2' : ''}`} onClick={() => { sfx.open(); setIntro(k) }}>
+            <button key={k} className={`panel p-2 flex items-center gap-2 text-left relative overflow-hidden ${i === DUEL_GAMES.length - 1 ? 'col-span-2' : ''}`} onClick={() => { sfx.open(); setIntro(k) }}>
               <span className="absolute left-0 top-0 bottom-0 w-[5px]" style={{ background: GAME_INFO[k].color }} />
               <span className="panel-dark p-1 ml-1"><Icon name={GAME_INFO[k].icon} size={36} /></span>
               <span className="font-pixel text-[16px] leading-tight">{GAME_INFO[k].name}</span>
@@ -214,13 +221,14 @@ export function Games() {
 
       {play && <PlayOverlay play={play} partner={partner} me={me} onClose={() => setPlay(null)} onSubmit={async score => {
         if (play.mode === 'practice') return null
+        if (play.mode === 'raid') { const r = await raidPlay(score); setG(r); void refresh(); return null }
         const r = play.mode === 'challenge' ? await duelCreate(play.game, play.seed, score) : await duelPlay(play.duel!.id, score)
         setG(r); void refresh()
         return play.mode === 'respond' ? r.duels.find(d => d.id === play.duel!.id) ?? null : null
       }} />}
 
       <Sheet open={wordOpen} onClose={() => setWordOpen(false)} title={<span className="flex items-center gap-2"><Icon name="scroll" size={26} />Günün Kelimesi</span>}>
-        {word && partner && <WordBoard g={g!} me={me} partner={partner} busy={busy} onGuess={w => act(() => wordGuess(w), r => {
+        {word && partner && <WordBoard g={g!} me={me} partner={partner} busy={busy} onHint={() => act(() => wordHint(), () => { sfx.sparkle(); fx.sparkle(window.innerWidth / 2, window.innerHeight * 0.3, 10, '#ffcc3a') })} onGuess={w => act(() => wordGuess(w), r => {
           const last = r.word?.guesses[r.word.guesses.length - 1]
           last?.res.split('').forEach((c, i) => window.setTimeout(() => sfx.flip(c as 'G' | 'Y' | 'B'), i * 110))
           if (r.word?.solved) window.setTimeout(() => { sfx.victory(); fx.confetti(90); fx.flash('rgba(91,209,124,.35)') }, 600)
@@ -285,7 +293,8 @@ function PlayOverlay({ play, me, partner, onClose, onSubmit }: { play: Play; me:
         <div className="flex items-center gap-2">
           <Icon name={info.icon} size={32} />
           <span className="font-pixel text-2xl flex-1">{info.name}</span>
-          {play.mode !== 'practice' && <span className="panel-dark px-2 py-1 font-pixel text-[15px] text-gold flex items-center gap-1"><Icon name="swords" size={16} />Düello</span>}
+          {play.mode === 'raid' ? <span className="panel-dark px-2 py-1 font-pixel text-[15px] text-hp flex items-center gap-1"><Icon name="skull" size={16} />Baskın</span>
+            : play.mode !== 'practice' && <span className="panel-dark px-2 py-1 font-pixel text-[15px] text-gold flex items-center gap-1"><Icon name="swords" size={16} />Düello</span>}
           {phase !== 'send' && <button className="pbtn pbtn-dark !min-h-[40px] !px-3" onClick={() => { sfx.close(); onClose() }} aria-label="Kapat">✕</button>}
         </div>
 
@@ -300,7 +309,9 @@ function PlayOverlay({ play, me, partner, onClose, onSubmit }: { play: Play; me:
             : play.game === 'MEMORY' ? <MemoryGame seed={play.seed} onEnd={s => void end(s)} />
               : play.game === 'TIMING' ? <TimingGame seed={play.seed} onEnd={s => void end(s)} />
                 : play.game === 'WORDS' ? <WordsGame seed={play.seed} onEnd={s => void end(s)} />
-                  : <SlideGame seed={play.seed} image={image} onEnd={s => void end(s)} />
+                  : play.game === 'MATH' ? <MathGame seed={play.seed} onEnd={s => void end(s)} />
+                    : play.game === 'COLOR' ? <ColorGame seed={play.seed} onEnd={s => void end(s)} />
+                      : <SlideGame seed={play.seed} image={image} onEnd={s => void end(s)} />
         )}
         {(phase === 'send' || phase === 'result') && (
           <div className="flex flex-col items-center pt-10 gap-4 text-center">
@@ -321,7 +332,8 @@ function PlayOverlay({ play, me, partner, onClose, onSubmit }: { play: Play; me:
                 <div className="font-pixel text-7xl text-gold popin drop-shadow-[0_4px_0_#000]">{score}</div>
                 {phase === 'send' ? <p className="font-pixel text-lg text-ink2 blinkdot">Gönderiliyor…</p>
                   : play.mode === 'challenge' ? <p className="font-pixel text-xl text-ok">Meydan okuma gönderildi!<br /><span className="text-ink2 text-[16px]">{partner?.name} oynayınca sonuç gelecek.</span></p>
-                    : <p className="font-pixel text-lg text-ink2">Antrenman</p>}
+                    : play.mode === 'raid' ? <p className="font-pixel text-xl text-hp">Baskın puanı gönderildi!<br /><span className="text-ink2 text-[16px]">İkiniz de oynayınca canavar hasar alır.</span></p>
+                      : <p className="font-pixel text-lg text-ink2">Antrenman</p>}
               </>
             )}
             {phase === 'result' && <button className="pbtn pbtn-gold w-full text-xl mt-2" autoFocus onClick={() => { sfx.click(); onClose() }}>Tamam</button>}
@@ -334,8 +346,11 @@ function PlayOverlay({ play, me, partner, onClose, onSubmit }: { play: Play; me:
 
 // ---------------------------------------------------------------- Günün Kelimesi
 const KEYS = ['ERTYUIOPĞÜ', 'ASDFGHJKLŞİ', 'ZCVBNMÖÇ']
-function WordBoard({ g, me, partner, busy, onGuess }: { g: GamesState; me: Hero; partner: Hero; busy: boolean; onGuess: (w: string) => Promise<void> }) {
+function WordBoard({ g, me, partner, busy, onGuess, onHint }: { g: GamesState; me: Hero; partner: Hero; busy: boolean; onGuess: (w: string) => Promise<void>; onHint: () => Promise<void> }) {
   const w = g.word!
+  const { game } = useGame()
+  const hints = w.hints ?? []
+  const hintAt = (i: number) => hints.find(h => h.pos === i + 1)?.letter
   const [cur, setCur] = useState('')
   const mine = w.guesses.filter(x => x.by === me.id).length
   const theirs = w.guesses.filter(x => x.by === partner.id).length
@@ -372,9 +387,17 @@ function WordBoard({ g, me, partner, busy, onGuess }: { g: GamesState; me: Hero;
     <div className="space-y-3">
       <div className="flex justify-between font-pixel text-[15px]">
         <span className="flex items-center gap-1"><Portrait cls={me.class} look={me.look} gear={me.equipped} size={22} />{3 - mine} hak</span>
-        <span className="text-ink2">{w.solvedDays} gün çözüldü</span>
+        {!w.finished && hints.length < 2 ? (
+          <button className="pbtn pbtn-dark !min-h-[32px] !px-2 text-[14px]" disabled={busy || game.hero!.gold < 10} onClick={() => void onHint()}><Icon name="lamp" size={16} />İpucu <Icon name="coin" size={14} />10</button>
+        ) : <span className="text-ink2">{w.solvedDays} gün çözüldü</span>}
         <span className="flex items-center gap-1">{3 - theirs} hak<Portrait cls={partner.class} look={partner.look} gear={partner.equipped} size={22} /></span>
       </div>
+      {hints.length > 0 && (
+        <div className="flex items-center justify-center gap-1.5 font-pixel">
+          <Icon name="lamp" size={16} />
+          {Array.from({ length: 5 }, (_, i) => <span key={i} className={`w-8 h-8 grid place-items-center border-2 rounded-[3px] text-xl ${hintAt(i) ? 'border-gold text-gold' : 'border-panel2 text-ink2'}`}>{hintAt(i) ?? '·'}</span>)}
+        </div>
+      )}
       <div className="space-y-1.5">
         {Array.from({ length: 6 }, (_, row) => {
           const gs = w.guesses[row]

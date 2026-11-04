@@ -1,5 +1,5 @@
 // Düello mini oyunları. Hepsi tohumludur: aynı tohumla iki kişi birebir aynı oyunu oynar.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DuelGame } from '../lib/game'
 import { BossSprite, Icon } from './Sprite'
 import { fx } from './fx'
@@ -12,8 +12,10 @@ export const GAME_INFO: Record<DuelGame, { name: string; icon: string; rule: str
   TIMING: { name: 'Kritik Vuruş', icon: 'target', rule: 'Ok ortadayken dokun · 5 tur', color: '#ff4d6d', max: 500 },
   WORDS: { name: 'Kelime Düellosu', icon: 'scroll', rule: 'İngilizce kelimenin Türkçesini seç', color: '#4cc9f0', max: 60 },
   SLIDE: { name: 'Yapboz', icon: 'puzzle', rule: 'Parçaları kaydır, resmi tamamla', color: '#ffcc3a', max: 300 },
+  MATH: { name: 'Hızlı Hesap', icon: 'lamp', rule: 'İşlemin sonucunu seç · 30 sn', color: '#ff8a3d', max: 40 },
+  COLOR: { name: 'Renk Tuzağı', icon: 'pal', rule: 'Bazen yazıyı, bazen rengi seç · 30 sn', color: '#ff8ab5', max: 40 },
 }
-export const DUEL_GAMES: DuelGame[] = ['TAP', 'MEMORY', 'TIMING', 'WORDS', 'SLIDE']
+export const DUEL_GAMES: DuelGame[] = ['TAP', 'MEMORY', 'TIMING', 'WORDS', 'MATH', 'COLOR', 'SLIDE']
 
 export function mulberry(seed: number) {
   let a = seed >>> 0
@@ -336,6 +338,82 @@ export function SlideGame({ seed, onEnd, image }: GameProps & { image: string })
     </div>
   )
 }
+
+// ---------------------------------------------------------------- 6) Hızlı Hesap
+const QUICK_MS = 30000
+type Choice = { prompt: ReactNode; answer: number; opts: string[] }
+/** Ortak çekirdek: 30 sn, 4 şık, doğru +1, yanlış kart titrer */
+function QuickGame({ seed, onEnd, icon, make, big }: GameProps & { icon: string; make: (R: () => number, i: number) => Choice; big?: boolean }) {
+  const qs = useMemo(() => { const R = mulberry(seed); return Array.from({ length: 60 }, (_, i) => make(R, i)) }, [seed, make])
+  const [start] = useState(() => performance.now())
+  const [qi, setQi] = useState(0)
+  const [score, setScore] = useState(0)
+  const [flash, setFlash] = useState<{ i: number; ok: boolean } | null>(null)
+  const [ended, setEnded] = useState(false)
+  const now = useNow(!ended)
+  const el = now - start
+  const scoreRef = useRef(0)
+  useEffect(() => { if (!ended && el >= QUICK_MS) { setEnded(true); sfx.timeUp(); onEnd(scoreRef.current) } }, [el, ended, onEnd])
+  const q = qs[qi % qs.length]
+  const pick = (o: number, e: React.PointerEvent) => {
+    if (flash || ended) return
+    const ok = o === q.answer
+    setFlash({ i: o, ok })
+    if (ok) { scoreRef.current++; setScore(scoreRef.current); sfx.good(); fx.burst(e.clientX, e.clientY, '#5bd17c', 8, 34) } else { sfx.bad(); fx.shake('play-area') }
+    window.setTimeout(() => { setFlash(null); setQi(x => x + 1) }, ok ? 220 : 600)
+  }
+  return (
+    <div className="space-y-3">
+      <Hud score={score} left={QUICK_MS - el} total={QUICK_MS} icon={icon} />
+      <div key={qi} className="panel p-5 text-center dropin min-h-[92px] grid place-items-center">{q.prompt}</div>
+      <div id="play-area" className="grid grid-cols-2 gap-2">
+        {q.opts.map((label, o) => {
+          const st = flash && (o === q.answer ? 'ok' : flash.i === o ? 'bad' : '')
+          return (
+            <button key={o} onPointerDown={e => pick(o, e)}
+              className={`pbtn !min-h-[68px] leading-tight ${big ? 'text-3xl' : 'text-xl'} ${st === 'ok' ? 'pbtn-green' : st === 'bad' ? 'pbtn-red' : 'pbtn-dark'}`}>{label}</button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+const makeMath = (R: () => number, i: number): Choice => {
+  const hard = i >= 12
+  const kind = R()
+  let a: number, b: number, v: number, text: string
+  if (kind < 0.4) { a = 2 + Math.floor(R() * (hard ? 60 : 20)); b = 2 + Math.floor(R() * (hard ? 60 : 20)); v = a + b; text = `${a} + ${b}` }
+  else if (kind < 0.7) { a = 10 + Math.floor(R() * (hard ? 80 : 30)); b = 1 + Math.floor(R() * Math.min(a - 1, hard ? 40 : 15)); v = a - b; text = `${a} − ${b}` }
+  else { a = 2 + Math.floor(R() * (hard ? 12 : 9)); b = 2 + Math.floor(R() * (hard ? 12 : 9)); v = a * b; text = `${a} × ${b}` }
+  const wrong = new Set<number>()
+  while (wrong.size < 3) { const d = (Math.floor(R() * 7) - 3) || (R() < 0.5 ? 10 : -10); const w = v + d; if (w !== v && w >= 0) wrong.add(w) }
+  const opts = shuffle([v, ...wrong], R)
+  return { prompt: <span className="font-pixel text-5xl text-warn">{text}</span>, answer: opts.indexOf(v), opts: opts.map(String) }
+}
+export function MathGame(p: GameProps) { return <QuickGame {...p} icon="lamp" make={makeMath} big /> }
+
+// ---------------------------------------------------------------- 7) Renk Tuzağı (Stroop)
+const COLORS: Array<[string, string]> = [['KIRMIZI', '#ff4d6d'], ['MAVİ', '#4c9df0'], ['YEŞİL', '#5bd17c'], ['SARI', '#ffcc3a'], ['MOR', '#b98aff'], ['TURUNCU', '#ff8a3d']]
+const makeColor = (R: () => number, i: number): Choice => {
+  const word = Math.floor(R() * COLORS.length)
+  let ink = Math.floor(R() * COLORS.length)
+  if (i < 3) ink = word // ısınma
+  const askInk = i >= 3 && R() < 0.55
+  const answer = askInk ? ink : word
+  const wrong = new Set<number>()
+  while (wrong.size < 3) { const w = Math.floor(R() * COLORS.length); if (w !== answer) wrong.add(w) }
+  const opts = shuffle([answer, ...wrong], R)
+  return {
+    prompt: (
+      <span className="flex flex-col items-center gap-2">
+        <span className="font-pixel text-[15px] text-ink2 flex items-center gap-1">{askInk ? <><Icon name="pal" size={16} />RENGİ seç</> : <><Icon name="scroll" size={16} />YAZIYI seç</>}</span>
+        <span className="font-pixel text-5xl drop-shadow-[0_3px_0_#000]" style={{ color: COLORS[ink][1] }}>{COLORS[word][0]}</span>
+      </span>
+    ),
+    answer: opts.indexOf(answer), opts: opts.map(c => COLORS[c][0]),
+  }
+}
+export function ColorGame(p: GameProps) { return <QuickGame {...p} icon="pal" make={makeColor} /> }
 
 function Hud({ score, left, total, icon = 'star' }: { score: number; left: number; total: number; icon?: string }) {
   return (
