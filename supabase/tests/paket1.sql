@@ -78,10 +78,12 @@ begin
   res := res || E'\nzincir · get_game: WAKE 3, QURAN 0 (en iyi 2) ✓';
 
   -- 4) Takvim ve gün detayı
-  r := get_calendar(v_today);
-  if jsonb_array_length(r->'me') < 5 then raise exception 'takvim gün sayısı %', jsonb_array_length(r->'me'); end if;
-  if (select count(*) from jsonb_array_elements(r->'me') d where (d->>'allDone')::boolean) <> 2 then raise exception 'tam gün sayısı'; end if;
-  if (select count(*) from jsonb_array_elements(r->'me') d where (d->>'izin')::boolean) <> 1 then raise exception 'izin günü sayısı'; end if;
+  -- bu ay + geçen ay (ay başındaysak günler iki aya bölünür)
+  r := get_calendar(v_today); g := get_calendar(v_today - 4);
+  if jsonb_array_length(r->'me') <> (select count(*) from hero_days where user_id = a and date_trunc('month', local_date) = date_trunc('month', v_today)) then raise exception 'takvim gün sayısı %', jsonb_array_length(r->'me'); end if;
+  if date_trunc('month', v_today) = date_trunc('month', v_today - 4) then g := jsonb_build_object('me', '[]'::jsonb); end if;
+  if (select count(*) from jsonb_array_elements(r->'me' || g->'me') d where (d->>'allDone')::boolean) <> 2 then raise exception 'tam gün sayısı'; end if;
+  if (select count(*) from jsonb_array_elements(r->'me' || g->'me') d where (d->>'izin')::boolean) <> 1 then raise exception 'izin günü sayısı'; end if;
   if (r->'totals'->>'fullDays')::int <> 2 then raise exception 'toplam'; end if;
   r := get_day(v_today - 2);
   if (select count(*) from jsonb_array_elements(r->'me') q where (q->>'done')::boolean) <> 1 or (r->'meDay'->>'allDone')::boolean then raise exception 'gün detayı'; end if;
