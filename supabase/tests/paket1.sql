@@ -28,9 +28,10 @@ begin
   for i in 1..40 loop perform bb_add_shard(a, 'TEST', 'k' || i); end loop;
   select count(*) into v_n from tickets where owner_id = a;
   if v_n <> 10 then raise exception 'bilet sayısı %', v_n; end if;
-  select tier into t4 from (select tier, row_number() over (order by created_at, id) rn from tickets where owner_id = a) x where rn = 4;
-  select tier into t8 from (select tier, row_number() over (order by created_at, id) rn from tickets where owner_id = a) x where rn = 8;
-  select tier into t10 from (select tier, row_number() over (order by created_at, id) rn from tickets where owner_id = a) x where rn = 10;
+  -- aynı işlemde created_at eşit; sıra kaynak anahtarından (4. bilet 16. parçada, 8. bilet 32., 10. bilet 40.)
+  select tier into t4 from tickets where owner_id = a and source_key = 'shards:k16';
+  select tier into t8 from tickets where owner_id = a and source_key = 'shards:k32';
+  select tier into t10 from tickets where owner_id = a and source_key = 'shards:k40';
   if t4 not in ('ORANGE','RED') or t8 not in ('ORANGE','RED') or t10 <> 'RED' then raise exception 'garanti % % %', t4, t8, t10; end if;
   if exists (select 1 from tickets where owner_id = a and tier not in ('GREEN','ORANGE','RED')) then raise exception 'kademe'; end if;
   if not exists (select 1 from hero_events where user_id = a and kind = 'TICKET' and data->>'tier' = 'RED') then raise exception 'kırmızı olay'; end if;
