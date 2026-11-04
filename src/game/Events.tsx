@@ -48,6 +48,8 @@ export function EventOverlay() {
       case 'QUIZ_WAIT': case 'RAID_WAIT': sfx.roar(); fx.shake(); break
       case 'RAID_DONE': sfx.hit(); window.setTimeout(() => sfx.victory(), 300); fx.shake('game-root', true); fx.confetti(70); break
       case 'WORD_HINT': sfx.sparkle(); break
+      case 'CASTLE_BUILT': sfx.hit(); fx.shake(); fx.sparkle(mid.x, mid.y, 10, '#ffcc3a', 70); break
+      case 'SEASON_END': sfx.victory(); fx.confetti(150); fx.flash('rgba(185,138,255,.4)'); break
       case 'ACHIEVEMENT': sfx.ticket(); fx.flash('rgba(185,138,255,.4)'); fx.sparkle(mid.x, mid.y, 10, '#d8c4ff', 70); break
       case 'CHEER': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8); break
       case 'HEAL': sfx.heal(); fx.ring(mid.x, mid.y, '#5bd17c'); break
@@ -285,6 +287,16 @@ export function EventOverlay() {
     case 'WORD_HINT':
       art = <span className="font-pixel text-7xl text-gold drop-shadow-[0_4px_0_#000]">{String(d.letter)}</span>; title = 'İpucu'; color = '#ffcc3a'; rays = false
       sub = <span className="text-ink">{cur.from} {String(d.pos)}. harfi açtı</span>
+      break
+    case 'CASTLE_BUILT':
+      art = <div className="relative"><Icon name="crown" size={96} className="glow" /><span className="absolute -bottom-2 left-1/2 -translate-x-1/2 font-pixel text-2xl text-gold drop-shadow-[0_2px_0_#000]">+{String(d.level)}</span></div>
+      title = String(d.name).toLocaleUpperCase('tr-TR'); color = '#ffcc3a'; rays = false
+      sub = <span className="text-ink">{cur.from} kaleye ekledi · <Icon name="coin" size={16} />{String(d.cost)}</span>
+      break
+    case 'SEASON_END':
+      art = <div className="flex flex-col items-center gap-1"><Icon name="trophy" size={96} className="glow" /><span className="font-pixel text-2xl text-magic">Sezon {String(d.n)} · {String(d.name)}</span></div>
+      title = 'SEZON BİTTİ'; color = '#b98aff'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Özetin Kahraman sekmesinde</span>{reward(undefined, d.gold)}</span>
       break
     default:
       art = <Icon name="sparkle" size={90} />; title = cur.kind

@@ -1,6 +1,7 @@
 // Ayarlar: zorluk (6 kademe), ses, görünüm/sınıf/ad, kurtarma kodları, çıkış, hesabı silme.
 import { useState } from 'react'
-import { deleteAccount, generateRecoveryCodes, setDifficulty, signOut, updateHero } from '../lib/game'
+import { deleteAccount, generateRecoveryCodes, setDifficulty, setReminder, signOut, updateHero } from '../lib/game'
+import { disablePush, enablePush, pushSupported } from '../lib/push'
 import { CLASS_INFO, type HeroClass, type Look } from '../game/art/hero'
 import { HeroSprite, Icon, Portrait } from '../game/Sprite'
 import { sfx } from '../game/sfx'
@@ -28,6 +29,20 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
     const on = !h.sound
     try { await updateHero({ sound: on }); await refresh(); if (on) sfx.coin() } catch (e) { toastError(e) }
   }
+  const [pushBusy, setPushBusy] = useState(false)
+  const pushOn = h.pushSubs > 0
+  async function togglePush() {
+    setPushBusy(true)
+    try {
+      if (pushOn) { await disablePush(); toast('Bildirimler kapalı') }
+      else { await enablePush(game.config.vapidPublic ?? ''); sfx.ticket(); toast('Bildirimler açık') }
+      await refresh()
+    } catch (e) { toastError(e) } finally { setPushBusy(false) }
+  }
+  async function pickHour(hr: number | null) {
+    const g = await run(() => setReminder(hr))
+    if (g) { sfx.click(); toast(hr === null ? 'Akşam hatırlatması kapalı' : `Hatırlatma: ${hr}:00`) }
+  }
 
   return (
     <Sheet open={open} onClose={close} title={<span className="flex items-center gap-2"><Icon name="gear" size={24} />Ayarlar</span>}>
@@ -51,6 +66,26 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
               <Portrait cls={h.class} look={h.look} gear={h.equipped} size={28} />Görünüm
             </button>
           </div>
+
+          <section className="space-y-2">
+            <div className="font-pixel text-lg flex items-center gap-2"><Icon name="bolt" size={22} />Bildirimler
+              {!pushSupported() && <span className="ml-auto text-[13px] text-ink2">Bu cihazda yok</span>}
+            </div>
+            <button className={`pbtn ${pushOn ? 'pbtn-green' : 'pbtn-dark'} w-full`} disabled={pushBusy || !pushSupported()} onClick={() => void togglePush()} aria-pressed={pushOn}>
+              <Icon name={pushOn ? 'sound' : 'mute'} size={22} />{pushOn ? 'Bildirimler açık' : 'Bildirimleri aç'}
+            </button>
+            {pushOn && (
+              <div className="space-y-1">
+                <div className="font-pixel text-[14px] text-ink2">Akşam hatırlatması (eksik görev varsa)</div>
+                <div className="grid grid-cols-5 gap-1">
+                  {[null, 18, 20, 21, 22].map(hr => (
+                    <button key={String(hr)} className={`panel-dark py-1.5 font-pixel text-[15px] ${h.remindHour === hr ? '!border-gold text-gold' : 'text-ink2'}`} onClick={() => void pickHour(hr)}>{hr === null ? 'Kapalı' : `${hr}:00`}</button>
+                  ))}
+                </div>
+                <p className="font-pixel text-[13px] text-ink2">Eşinden gelenler (alkış, düello, mektup…) anında bildirilir.</p>
+              </div>
+            )}
+          </section>
 
           {!game.couple.hasPartner && (
             <button className="pbtn pbtn-purple w-full" onClick={() => { close(); go('arena') }}><Icon name="ticket" size={22} />Partnerini davet et</button>

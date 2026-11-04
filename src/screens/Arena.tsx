@@ -6,6 +6,7 @@ import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Segments, Sheet, toastError, useGame } from '../game/ui'
 import { online } from './Games'
+import { CastlePanel } from './Castle'
 
 export function Arena() {
   const { game, run } = useGame()
@@ -148,6 +149,7 @@ export function Arena() {
         </>
       ) : <InviteCard />}
 
+      {partner && <CastlePanel />}
       <Bestiary />
     </div>
   )

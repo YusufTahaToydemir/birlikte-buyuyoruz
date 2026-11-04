@@ -7,6 +7,7 @@ import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Sheet, useGame } from '../game/ui'
 import { CalendarPanel } from './Calendar'
+import { SeasonCard } from './Season'
 
 const SLOTS: Array<{ slot: Slot; icon: string; kind: string }> = [
   { slot: 'weapon', icon: 'sword', kind: 'WEAPON' },
@@ -64,6 +65,8 @@ export function HeroScreen() {
       </section>
 
       <LevelRoad h={h} />
+
+      <SeasonCard />
 
       <CalendarPanel />
 

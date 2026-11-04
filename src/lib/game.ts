@@ -13,6 +13,7 @@ export interface Hero {
   streak: number; bestStreak: number; sound: boolean
   shards: number; lastSeen: string | null
   skillReadyAt: string | null
+  remindHour: number | null; pushSubs: number
 }
 export interface Partner extends Hero { todayDone: number; todayTotal: number; todayCodes: string[] }
 export type DayEvent = 'SPIRIT_SURGE' | 'MIND_DAY' | 'BODY_DAY' | 'ORDER_DAY' | 'GOLD_RAIN' | 'TWIN' | 'BOSS_RAGE' | 'COMBO_DAY'
@@ -22,7 +23,7 @@ export interface GameEvent { id: string; kind: string; data: Record<string, unkn
 export interface Boss { id: string; key: string; name: string; hp: number; maxHp: number; defeated: boolean; weak: Category | null; hits: Array<{ user: string | null; kind: string; damage: number; at: string }>; byUser: Record<string, number> }
 export interface Game {
   serverTime: string; today: string; weekStart: string; weekEnd: string
-  config: { difficulties: Difficulty[]; cheerXP: number; cheersPerDay: number; healAmount: number; bossGold: number; comboGold: number; comboDamage: number; shardsPerTicket: number; duelRewardsPerDay: number }
+  config: { difficulties: Difficulty[]; cheerXP: number; cheersPerDay: number; healAmount: number; bossGold: number; comboGold: number; comboDamage: number; shardsPerTicket: number; duelRewardsPerDay: number; vapidPublic?: string }
   hero: Hero | null
   day: { izin: boolean; difficulty: number; event: DayEvent | null } | null
   quests: Quest[]
@@ -88,6 +89,9 @@ const ERROR_TEXT: Record<string, string> = {
   MAX_HELD: 'En fazla 2 tane taşıyabilirsin.',
   SKILL_COOLDOWN: 'Yeteneğin henüz dolmadı.',
   SKILL_NOTHING: 'Bugün yapılacak görev kalmamış.',
+  MAX_LEVEL: 'Bu parça son seviyesinde.',
+  UNSUPPORTED: 'Bu cihaz bildirimleri desteklemiyor. iPhone’da önce ana ekrana ekle.',
+  DENIED: 'Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.',
 }
 export function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : e instanceof Error ? e.message : String(e)
@@ -225,6 +229,16 @@ export const noteWrite = (kind: 'LETTER' | 'THANKS', text: string, stamp: string
 export const getNotes = (before: string | null = null, limit = 40) => rpc<Note[]>('get_notes', { p_before: before, p_limit: limit })
 export const raidPlay = (score: number) => rpc<Games>('raid_play', { p_score: Math.round(score) })
 export const wordHint = () => rpc<Games>('word_hint')
+export interface Castle { parts: Record<string, number>; total: number; log: Array<{ key: string; level: number; by: string; at: string }> }
+export const getCastle = () => rpc<Castle>('get_castle')
+export const castleBuild = (key: string) => rpc<{ castle: Castle; game: Game }>('castle_build', { p_key: key })
+export interface SeasonHero { fullDays: number; quests: number; xp: number; bestStreak: number; duelWins: number }
+export interface SeasonSummary { heroes: Record<string, SeasonHero>; combos: number; bosses: number; together: number; words: number; quizzes: number; raids: number; notes: number; castle: number }
+export interface Season { n: number; name: string; start: string; end: string; daysLeft: number; dayOf: number; days: number; summary: SeasonSummary; past: Array<{ n: number; name: string; start: string; end: string; summary: SeasonSummary }> }
+export const getSeason = () => rpc<Season>('get_season')
+export const pushSubscribe = (endpoint: string, p256dh: string, auth: string) => rpc<{ ok: boolean; subs: number }>('push_subscribe', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth })
+export const pushUnsubscribe = (endpoint: string | null) => rpc<{ ok: boolean; subs: number }>('push_unsubscribe', { p_endpoint: endpoint })
+export const setReminder = (hour: number | null) => rpc<Game>('set_reminder', { p_hour: hour })
 /** Mektup damgaları (piksel ikon adları) */
 export const STAMPS = ['heart', 'flower', 'star', 'sun', 'moon', 'gift', 'sparkle', 'coin']
 
@@ -318,6 +332,10 @@ export const ACHIEVEMENTS: Array<{ key: string; name: string; icon: string }> = 
   { key: 'QUIZ_PERFECT', name: 'Kalpten Kalbe', icon: 'heart' },
   { key: 'LETTER_10', name: 'Mektup Dostu', icon: 'quill' },
   { key: 'RAID_5', name: 'Baskıncı', icon: 'swords' },
+  { key: 'CASTLE_1', name: 'İlk Taş', icon: 'shield' },
+  { key: 'CASTLE_26', name: 'Kale Sahibi', icon: 'crown' },
+  { key: 'SEASON_1', name: 'İlk Sezon', icon: 'moon' },
+  { key: 'SEASON_4', name: 'Bir Yıl Birlikte', icon: 'heart' },
 ]
 
 export const CAT_INFO: Record<Category, { name: string; icon: string; color: string }> = {
