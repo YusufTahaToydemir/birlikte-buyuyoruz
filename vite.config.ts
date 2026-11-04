@@ -40,6 +40,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         navigateFallback: `${base}index.html`,
         runtimeCaching: [],
+        importScripts: ['push-sw.js'],
       },
     }),
   ],
