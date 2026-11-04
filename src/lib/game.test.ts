@@ -28,7 +28,7 @@ describe('seviye yolu', () => {
     expect(levelReward(10)).toEqual({ gold: 170, potion: 'potion_big' })
   })
   it('her eşya bir seviyede açılır, unvanlar sıralı', () => {
-    expect(unlocksAt(3).map(i => i.key).sort()).toEqual(['armor_1', 'cape_blue', 'cape_red', 'weapon_1'])
+    expect(unlocksAt(3).map(i => i.key).sort()).toEqual(['armor_1', 'cape_blue', 'cape_red', 'streak_shield', 'weapon_1'])
     expect(titleFor(1).name).toBe('Çaylak')
     expect(titleFor(57).name).toBe('Usta')
     expect(titleFor(250).name).toBe('Ölümsüz')

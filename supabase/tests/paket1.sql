@@ -69,7 +69,7 @@ begin
   perform bb_close_day(a, v_today - 1);
   if (select streak from heroes where user_id = a) <> 7 or (select qty from inventory where user_id = a and item_key = 'streak_shield') <> 1 then raise exception 'izin günü'; end if;
   if (select chain from quest_chains where user_id = a and code = 'WAKE') <> 3 or (select last_date from quest_chains where user_id = a and code = 'WAKE') <> v_today - 1 then raise exception 'izin zinciri korumadı'; end if;
-  res := res || E'\nkalkan · 3. alınamaz; eksik günde seri 7 kaldı, kalkan 1'e düştü, can düştü; izin günü zinciri korudu ✓';
+  res := res || E'\nkalkan · 3. alınamaz; eksik günde seri 7 kaldı, kalkan 1 kaldı, can düştü; izin günü zinciri korudu ✓';
 
   -- 3) get_game zincirleri: WAKE 3 (dünden devam), QURAN 0; bugün WAKE yapınca istemci 4 gösterir
   g := get_game();
