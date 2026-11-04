@@ -30,29 +30,33 @@ begin
   select * into c from couples where id = cp;
 
   -- 1) Kale: satın alma, seviye maliyeti, tavan, bonus (kuyu → can, mutfak → sabah canı)
-  update heroes set gold = 2000 where user_id = a;
+  update heroes set gold = 4000 where user_id = a;
   begin r := castle_build('xxx'); raise exception 'yok parça';
   exception when others then if sqlerrm <> 'NOT_FOUND' then raise; end if; end;
   r := castle_build('well');
-  if (r->'castle'->'parts'->>'well')::int <> 1 or (select gold from heroes where user_id = a) <> 1800 then raise exception 'kuyu 1'; end if;
+  if (r->'castle'->'parts'->>'well')::int <> 1 or (select gold from heroes where user_id = a) <> 3800 then raise exception 'kuyu 1'; end if;
   r := castle_build('well');
-  if (select gold from heroes where user_id = a) <> 1400 then raise exception 'kuyu 2 maliyeti (200×2)'; end if;
+  if (select gold from heroes where user_id = a) <> 3400 then raise exception 'kuyu 2 maliyeti (200×2)'; end if;
   begin r := castle_build('well'); raise exception 'kuyu 3';
   exception when others then if sqlerrm <> 'MAX_LEVEL' then raise; end if; end;
   if bb_user_max_hp(a) <> bb_max_hp(1) + 6 then raise exception 'kuyu canı %', bb_user_max_hp(a); end if;
   if not exists (select 1 from hero_events where user_id = b and kind = 'CASTLE_BUILT' and data->>'key' = 'well') then raise exception 'kale olayı'; end if;
   if not exists (select 1 from achievements where user_id = a and key = 'CASTLE_1') then raise exception 'kale rozeti'; end if;
-  r := castle_build('library');
-  perform bb_generate_day(a, v_today + 1);
-  if (select xp from quests where user_id = a and local_date = v_today + 1 and code = 'ENGLISH') < (select xp from quests where user_id = a and local_date = v_today and code = 'ENGLISH') then raise exception 'kütüphane XP'; end if;
+  -- kütüphane: olaysız iki gün, biri kütüphaneden önce biri sonra (XP düşmemeli; küçük değerlerde yuvarlama eşit bırakabilir)
+  perform bb_generate_day(a, (select min(v_today + gs) from generate_series(1, 90) gs where bb_day_event(cp, v_today + gs) is null));
+  r := castle_build('library'); r := castle_build('library'); r := castle_build('library');
+  perform bb_generate_day(a, (select min(v_today + gs) from generate_series(1, 90) gs where bb_day_event(cp, v_today + gs) is null and not exists (select 1 from hero_days hd where hd.user_id = a and hd.local_date = v_today + gs)));
+  if (select xp from quests q where q.user_id = a and q.code = 'ENGLISH' and q.local_date > v_today order by q.local_date desc limit 1)
+     < (select xp from quests q where q.user_id = a and q.code = 'ENGLISH' and q.local_date > v_today order by q.local_date asc limit 1) then raise exception 'kütüphane XP'; end if;
+  if (select gold from heroes where user_id = a) <> 3400 - 400 - 800 - 1200 then raise exception 'kütüphane maliyeti'; end if;
   r := get_castle();
-  if (r->>'total')::int <> 3 or jsonb_array_length(r->'log') <> 2 then raise exception 'kale json %', r; end if;
-  res := res || E'\nkale · kuyu 200 + 400, 3. seviye yok; +6 can; kütüphane XP; eşe olay; rozet ✓';
+  if (r->>'total')::int <> 5 or jsonb_array_length(r->'log') <> 2 then raise exception 'kale json %', r; end if;
+  res := res || E'\nkale · kuyu 200 + 400, 3. seviye yok; +6 can; kütüphane 3 seviye (400+800+1200), XP düşmedi; eşe olay; rozet ✓';
 
   -- 2) Sezon: şu anki sezon ve özet; geçmiş sezon kapanışı
   r := get_season();
   if (r->>'n')::int <> bb_season_n(v_today) or (r->>'daysLeft')::int < 1 or jsonb_typeof(r->'summary'->'heroes') <> 'object' then raise exception 'sezon json %', r; end if;
-  if (r->'summary'->>'castle')::int <> 3 then raise exception 'sezon kale'; end if;
+  if (r->'summary'->>'castle')::int <> 5 then raise exception 'sezon kale'; end if;
   -- geçmiş sezon simülasyonu: ilk günü bir önceki sezona taşı
   insert into hero_days (user_id, local_date, difficulty, closed, all_done) values (a, bb_season_start(bb_season_n(v_today)) - 10, 2, true, true);
   select gold into v_gold from heroes where user_id = a;
