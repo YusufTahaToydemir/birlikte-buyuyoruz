@@ -1,10 +1,10 @@
 // Macera: sahnede kahraman ve haftanın canavarı; görevler tek dokunuşla yapılır.
-import { useRef, useState } from 'react'
-import { completeQuest, setIzin, drinkPotion, CAT_INFO, type Quest } from '../lib/game'
+import { useRef, useState, type ReactNode } from 'react'
+import { completeQuest, setIzin, drinkPotion, useSkill, CAT_INFO, DAY_EVENTS, SKILLS, type Quest } from '../lib/game'
 import { BossSprite, HeroSprite, Icon, PetSprite, SceneAmbient, SceneBg } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
-import { Bar, Segments, Stars, toastError, useGame } from '../game/ui'
+import { Bar, Segments, Sheet, Stars, toastError, useGame } from '../game/ui'
 import { timeOfDay } from '../game/art/scene'
 import { online } from './Games'
 
@@ -25,6 +25,32 @@ export function Adventure() {
   const boss = game.boss
   const partner = game.partner
   const chainOf = (q: Quest) => (q.kind === 'DAILY' ? (game.chains?.[q.code]?.chain ?? 0) + (q.done ? 1 : 0) : 0)
+  const evKey = game.day?.event ?? null
+  const ev = evKey ? DAY_EVENTS[evKey] : null
+  const skill = SKILLS[hero.class]
+  const readyAt = hero.skillReadyAt ? new Date(hero.skillReadyAt).getTime() : 0
+  const skillLeftMs = Math.max(0, readyAt - new Date(game.serverTime).getTime())
+  const skillReady = skillLeftMs === 0
+  const [skillOpen, setSkillOpen] = useState(false)
+  /** Görev kartındaki küçük rozetler: olay çarpanı, canavar zayıflığı, çift gün */
+  const badgesOf = (q: Quest): ReactNode[] => {
+    const out: ReactNode[] = []
+    if (ev && evKey) {
+      const hit = (ev.cat && ev.cat === q.category) || (ev.kind === 'SIDE' && q.kind === 'SIDE') || evKey === 'BOSS_RAGE'
+      if (hit) out.push(<span key="ev" className="flex items-center gap-0.5" style={{ color: ev.color }}><Icon name={ev.icon} size={14} />{evKey === 'GOLD_RAIN' ? '×3' : evKey === 'BOSS_RAGE' ? '×1.5' : '×2'}</span>)
+      if (evKey === 'TWIN' && q.kind === 'DAILY' && partner?.todayCodes?.includes(q.code)) out.push(<span key="twin" className="flex items-center gap-0.5 text-[#ff8ab5]"><Icon name="heart" size={14} />+5</span>)
+    }
+    if (boss && !boss.defeated && boss.weak === q.category) out.push(<span key="weak" className="flex items-center gap-0.5 text-hp"><Icon name="sword" size={14} />×1.5</span>)
+    return out
+  }
+  async function castSkill() {
+    const g = await run(() => useSkill())
+    if (!g) return
+    setSkillOpen(false)
+    fx.flash(skill.color + '66'); fx.ring(window.innerWidth / 2, window.innerHeight * 0.3, skill.color); fx.confetti(40); navigator.vibrate?.([30, 30, 60])
+    if (hero.class === 'WARRIOR') sfx.roar(); else if (hero.class === 'HEALER') sfx.heal(); else if (hero.class === 'MAGE') sfx.sparkle(); else sfx.dice()
+    fx.float(skill.name.toLocaleUpperCase('tr-TR'), window.innerWidth / 2, window.innerHeight * 0.3, skill.color, true)
+  }
   const potions = (game.inventory.potion_small ?? 0) + (game.inventory.potion_big ?? 0)
 
   const play = (cls: string, set: (s: string) => void) => { set(''); requestAnimationFrame(() => set(cls)); window.setTimeout(() => set(''), 600) }
@@ -114,7 +140,11 @@ export function Adventure() {
             ) : (
               <>
                 <Bar value={boss.hp} max={boss.maxHp} color="#ff4d6d" className="w-[86px] mb-1" h={12} />
-                <div ref={bossRef} className={bossFx}><BossSprite bossKey={boss.key} scale={1.8} className={boss.hp < boss.maxHp * 0.25 ? 'boss-idle boss-angry' : 'boss-idle'} /></div>
+                <div ref={bossRef} className={`relative ${bossFx}`}>
+                  <BossSprite bossKey={boss.key} scale={1.8} className={boss.hp < boss.maxHp * 0.25 ? 'boss-idle boss-angry' : 'boss-idle'} />
+                  {boss.weak && <span className="absolute -left-3 -top-1 panel-dark !p-0.5 grid place-items-center" title={`Zayıf: ${CAT_INFO[boss.weak].name}`}><Icon name={CAT_INFO[boss.weak].icon} size={16} /></span>}
+                  {boss.hp < boss.maxHp * 0.25 && <span className="absolute -right-2 -top-2 font-pixel text-[12px] text-hp blinkdot drop-shadow-[0_1px_0_#000]">ÖFKE</span>}
+                </div>
               </>
             )}
           </button>
@@ -132,10 +162,41 @@ export function Adventure() {
             <Icon name="potion" size={26} /><span className="text-[16px]">{potions}</span>
           </button>
         )}
+        <button className={`pbtn ${skillReady ? 'pbtn-purple' : 'pbtn-dark'} !px-3 !min-h-[52px] relative`} onClick={() => { sfx.click(); setSkillOpen(true) }} aria-label={skill.name}>
+          <Icon name={skill.icon} size={26} className={skillReady ? 'glow' : 'opacity-50'} />
+          {!skillReady && <span className="absolute -bottom-1.5 right-0.5 font-pixel text-[11px] text-ink2 bg-edge px-1 rounded">{Math.ceil(skillLeftMs / 86400000)}g</span>}
+        </button>
         <button className={`pbtn ${izin ? 'pbtn-blue' : 'pbtn-dark'} !px-3 !min-h-[52px]`} onClick={() => void toggleIzin()} aria-pressed={izin} aria-label="İzinli gün">
           <Icon name="shield" size={26} />
         </button>
       </div>
+
+      {ev && (
+        <div className="panel p-2 flex items-center gap-3 dropin" style={{ borderColor: ev.color }} aria-label="Günün olayı">
+          <span className="panel-dark w-[46px] h-[46px] grid place-items-center shrink-0"><Icon name={ev.icon} size={34} className="glow" /></span>
+          <div className="min-w-0">
+            <div className="font-pixel text-lg leading-tight" style={{ color: ev.color }}>{ev.name}</div>
+            <div className="font-pixel text-[14px] text-ink2 leading-tight">{ev.rule}</div>
+          </div>
+        </div>
+      )}
+
+      <Sheet open={skillOpen} onClose={() => setSkillOpen(false)} title={<span className="flex items-center gap-2"><Icon name={skill.icon} size={26} />{skill.name}</span>}>
+        <div className="space-y-3">
+          <div className="panel-dark relative overflow-hidden flex items-end justify-center gap-3 py-4" style={{ background: `radial-gradient(circle at 50% 70%, ${skill.color}44, transparent 65%), #1f1838` }}>
+            <div className="absolute inset-[-60%] rays opacity-25 pointer-events-none" />
+            <div className="relative"><HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={3.5} pose="joy" /></div>
+            <Icon name={skill.icon} size={56} className="relative glow bob" />
+          </div>
+          <p className="font-pixel text-center text-lg leading-tight">{skill.desc}</p>
+          <div className="flex justify-center"><span className="panel-dark px-2 py-1 font-pixel text-[14px] text-ink2 flex items-center gap-1"><Icon name="moon" size={14} />Haftada 1</span></div>
+          {skillReady ? (
+            <button className="pbtn pbtn-purple w-full text-xl" onClick={() => void castSkill()}><Icon name={skill.icon} size={24} />Kullan</button>
+          ) : (
+            <div className="pbtn pbtn-dark w-full opacity-70"><Icon name="lock" size={22} />{Math.ceil(skillLeftMs / 3600000) >= 48 ? `${Math.ceil(skillLeftMs / 86400000)} gün sonra` : `${Math.ceil(skillLeftMs / 3600000)} saat sonra`}</div>
+          )}
+        </div>
+      </Sheet>
 
       {allDone && (
         <div className="panel dropin flex items-center gap-3 p-3 !bg-[#3a2f12]">
@@ -146,14 +207,14 @@ export function Adventure() {
 
       {/* Günlük görevler */}
       <ul className="space-y-2">
-        {daily.map(q => <QuestCard key={q.id} q={q} onToggle={toggle} busy={q.id in pending} chain={chainOf(q)} />)}
+        {daily.map(q => <QuestCard key={q.id} q={q} onToggle={toggle} busy={q.id in pending} chain={chainOf(q)} badges={badgesOf(q)} />)}
       </ul>
 
       {side.length > 0 && (
         <>
           <div className="flex items-center gap-2 pt-2 font-pixel text-magic text-lg"><Icon name="dice" size={24} />Sürpriz görevler</div>
           <ul className="space-y-2">
-            {side.map(q => <QuestCard key={q.id} q={q} onToggle={toggle} busy={q.id in pending} side />)}
+            {side.map(q => <QuestCard key={q.id} q={q} onToggle={toggle} busy={q.id in pending} side badges={badgesOf(q)} />)}
           </ul>
         </>
       )}
@@ -161,7 +222,7 @@ export function Adventure() {
   )
 }
 
-function QuestCard({ q, onToggle, busy, side, chain = 0 }: { q: Quest; onToggle: (q: Quest, el: HTMLElement) => void; busy: boolean; side?: boolean; chain?: number }) {
+function QuestCard({ q, onToggle, busy, side, chain = 0, badges = [] }: { q: Quest; onToggle: (q: Quest, el: HTMLElement) => void; busy: boolean; side?: boolean; chain?: number; badges?: ReactNode[] }) {
   const cat = CAT_INFO[q.category]
   const chainColor = chain >= 30 ? '#ff4d6d' : chain >= 7 ? '#ffcc3a' : '#ff8a3d'
   return (
@@ -180,6 +241,7 @@ function QuestCard({ q, onToggle, busy, side, chain = 0 }: { q: Quest; onToggle:
             <span className="flex items-center gap-1 text-xp"><Icon name="star" size={14} />{q.xp}</span>
             <span className="flex items-center gap-1 text-gold"><Icon name="coin" size={14} />{q.gold}</span>
             {chain >= 2 && <span className={`flex items-center gap-0.5 ${chain >= 7 ? 'glow' : ''}`} style={{ color: chainColor }} title={`${chain} gün üst üste`}><Icon name="flame" size={14} />{chain}</span>}
+            {badges}
           </span>
         </span>
         <span className="checkbox">{q.done && <Icon name="check" size={30} className="popin" />}</span>

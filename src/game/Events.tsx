@@ -1,7 +1,8 @@
 // Olay katmanı: seviye atlama (ödüller, unvan, açılan eşyalar), hasar, bayılma, kombo, boss, bilet parçası, rozet,
 // partnerden gelenler (alkış, şifa, altın, düello, kelime, birlikte etkinlik).
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ACHIEVEMENTS, markEventsSeen, TICKET_TIERS, titleFor, unlocksAt, type GameEvent, type TicketTier } from '../lib/game'
+import { ACHIEVEMENTS, markEventsSeen, SKILLS, TICKET_TIERS, titleFor, unlocksAt, type GameEvent, type TicketTier } from '../lib/game'
+import type { HeroClass } from './art/hero'
 import { GAME_INFO } from './minigames'
 import { BossSprite, HeroSprite, Icon, PetSprite } from './Sprite'
 import { fx } from './fx'
@@ -38,6 +39,8 @@ export function EventOverlay() {
       case 'TICKET': case 'TICKET_APPROVED': sfx.ticket(); fx.confetti(50); fx.ring(mid.x, mid.y, '#ffd166'); break
       case 'SHARD': sfx.shard(); fx.sparkle(mid.x, mid.y, 10, '#ffd166', 60); break
       case 'STREAK_SAVED': sfx.heal(); fx.flash('rgba(76,201,240,.35)'); fx.ring(mid.x, mid.y, '#4cc9f0'); break
+      case 'SKILL_USED': sfx.roar(); fx.flash('rgba(185,138,255,.35)'); fx.ring(mid.x, mid.y, '#b98aff'); break
+      case 'TWIN_BONUS': sfx.coin(); fx.sparkle(mid.x, mid.y, 10, '#ff8ab5', 60); break
       case 'ACHIEVEMENT': sfx.ticket(); fx.flash('rgba(185,138,255,.4)'); fx.sparkle(mid.x, mid.y, 10, '#d8c4ff', 70); break
       case 'CHEER': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8); break
       case 'HEAL': sfx.heal(); fx.ring(mid.x, mid.y, '#5bd17c'); break
@@ -150,8 +153,8 @@ export function EventOverlay() {
       sub = <span className="text-ink">{cur.from} seni alkışladı!</span>
       break
     case 'HEAL':
-      art = <Icon name="heart" size={110} className="glow bob" />; title = <span className="text-ok">+{d.hp} ❤</span>; color = '#5bd17c'
-      sub = <span className="text-ink">{cur.from} seni iyileştirdi</span>
+      art = <Icon name="heart" size={110} className="glow bob" />; title = <span className="text-ok">{d.full ? 'CAN DOLDU!' : `+${d.hp} ❤`}</span>; color = '#5bd17c'
+      sub = <span className="text-ink">{d.full ? `${cur.from} Büyük Şifa kullandı` : `${cur.from} seni iyileştirdi`}</span>
       break
     case 'GIFT':
       art = <Icon name="gift" size={110} className="pop" />; title = `+${d.gold}`
@@ -210,6 +213,23 @@ export function EventOverlay() {
     case 'TICKET_APPROVED':
       art = <Icon name="ticket" size={110} className="glow" />; title = 'Onaylandı!'; color = '#5bd17c'
       sub = <span className="text-ink">{cur.from} biletini onayladı</span>
+      break
+    case 'SKILL_USED': {
+      const sk = SKILLS[(d.class as HeroClass) ?? 'WARRIOR'] ?? SKILLS.WARRIOR
+      art = (
+        <div className="flex items-end gap-3">
+          {game.partner && <div style={{ transform: 'scaleX(-1)' }}><HeroSprite cls={game.partner.class} look={game.partner.look} gear={game.partner.equipped} scale={2.6} pose="joy" /></div>}
+          <Icon name={sk.icon} size={64} className="glow mb-6 bob" />
+        </div>
+      )
+      title = sk.name.toLocaleUpperCase('tr-TR'); color = sk.color
+      sub = <span className="text-ink">{cur.from} yeteneğini kullandı · {sk.desc}</span>
+      break
+    }
+    case 'TWIN_BONUS':
+      art = <div className="relative"><Icon name={String(d.icon ?? 'check')} size={96} /><Icon name="heart" size={40} className="absolute -right-4 -top-2 glow popin" /></div>
+      title = 'ÇİFT!'; color = '#ff8ab5'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">İkiniz de "{String(d.title)}" yaptınız</span>{reward(undefined, d.gold)}</span>
       break
     default:
       art = <Icon name="sparkle" size={90} />; title = cur.kind

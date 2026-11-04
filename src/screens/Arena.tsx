@@ -1,10 +1,10 @@
 // Arena: haftanın ortak canavarı, XP yarışı, alkış / iyileştir / altın gönder.
-import { useRef, useState } from 'react'
-import { createInvite, socialAction, type Hero } from '../lib/game'
+import { useEffect, useRef, useState } from 'react'
+import { CAT_INFO, createInvite, getBestiary, socialAction, type BestiaryEntry, type Hero } from '../lib/game'
 import { BossSprite, HeroSprite, Icon, Portrait } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
-import { Bar, Segments, toastError, useGame } from '../game/ui'
+import { Bar, Segments, Sheet, toastError, useGame } from '../game/ui'
 import { online } from './Games'
 
 export function Arena() {
@@ -48,10 +48,16 @@ export function Arena() {
       {boss ? (
         <section className="panel overflow-hidden relative p-3 pt-2" style={{ background: 'linear-gradient(#2a1840, #3a1f3a 60%, #2a2146)' }}>
           <div className="absolute inset-[-50%] rays opacity-40 pointer-events-none" style={{ display: boss.defeated ? 'block' : 'none' }} />
-          <div className="relative flex items-center justify-between font-pixel">
-            <span className="text-xl">{boss.name}</span>
-            <span className="panel-dark px-2 py-0.5 text-[16px] text-ink2 flex items-center gap-1"><Icon name="moon" size={14} />{daysLeft} gün</span>
+          <div className="relative flex items-center justify-between font-pixel gap-2">
+            <span className="text-xl truncate">{boss.name}</span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              {boss.weak && !boss.defeated && <span className="panel-dark px-1.5 py-0.5 text-[14px] flex items-center gap-1" style={{ color: CAT_INFO[boss.weak].color }} title={`Zayıf noktası: ${CAT_INFO[boss.weak].name}`}><Icon name={CAT_INFO[boss.weak].icon} size={16} />×1.5</span>}
+              <span className="panel-dark px-2 py-0.5 text-[16px] text-ink2 flex items-center gap-1"><Icon name="moon" size={14} />{daysLeft} gün</span>
+            </span>
           </div>
+          {!boss.defeated && boss.hp < boss.maxHp * 0.25 && (
+            <div className="relative font-pixel text-[15px] text-hp flex items-center justify-center gap-1 blinkdot"><Icon name="skull" size={16} />ÖFKE · görevler yarım vurur, kombo tam</div>
+          )}
           <div className="relative flex justify-center py-2">
             <button ref={bossRef} className={bossFx} onClick={poke} aria-label={boss.name}>
               <BossSprite bossKey={boss.key} scale={3.4} className={boss.defeated ? 'grayscale opacity-60 rotate-[8deg]' : boss.hp < boss.maxHp * 0.25 ? 'boss-idle boss-angry' : 'boss-idle'} />
@@ -141,7 +147,59 @@ export function Arena() {
           )}
         </>
       ) : <InviteCard />}
+
+      <Bestiary />
     </div>
+  )
+}
+
+/** Bestiyer: karşılaşılan ve yenilen canavarlar */
+function Bestiary() {
+  const { game } = useGame()
+  const [list, setList] = useState<BestiaryEntry[] | null>(null)
+  const [sel, setSel] = useState<BestiaryEntry | null>(null)
+  useEffect(() => { let on = true; getBestiary().then(l => { if (on) setList(l) }).catch(toastError); return () => { on = false } }, [game.boss?.defeated, game.boss?.id])
+  if (!list) return null
+  const beaten = list.filter(b => b.defeated > 0).length
+  return (
+    <section className="panel p-3 space-y-2" aria-label="Bestiyer">
+      <div className="flex items-center justify-between font-pixel">
+        <span className="text-xl flex items-center gap-2"><Icon name="skull" size={24} />Bestiyer</span>
+        <span className="text-[15px] text-ink2">{beaten}/{list.length}</span>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {list.map(b => {
+          const seen = b.faced > 0, won = b.defeated > 0
+          return (
+            <button key={b.key} className={`panel-dark aspect-square relative grid place-items-center ${seen ? '' : 'opacity-45'}`} onClick={() => { sfx.click(); setSel(b) }} aria-label={b.name}>
+              <BossSprite bossKey={b.key} scale={1.6} className={won ? '' : seen ? 'grayscale-[.6]' : 'grayscale brightness-50'} />
+              {won && <span className="absolute top-0.5 right-1 font-pixel text-[13px] text-gold flex items-center gap-0.5"><Icon name="trophy" size={12} />{b.defeated}</span>}
+              {!seen && <Icon name="lock" size={16} className="absolute bottom-1 right-1 opacity-70" />}
+            </button>
+          )
+        })}
+      </div>
+      <Sheet open={!!sel} onClose={() => setSel(null)} title={sel ? (sel.faced > 0 ? sel.name : '???') : null}>
+        {sel && (
+          <div className="space-y-3">
+            <div className="panel-dark py-4 grid place-items-center relative overflow-hidden">
+              <div className="absolute inset-[-60%] rays opacity-20 pointer-events-none" />
+              <BossSprite bossKey={sel.key} scale={4} className={sel.defeated > 0 ? 'boss-idle' : sel.faced > 0 ? 'grayscale-[.6] boss-idle' : 'grayscale brightness-50'} />
+            </div>
+            <div className="grid grid-cols-3 gap-2 font-pixel text-center">
+              <div className="panel-dark p-2"><div className="text-[13px] text-ink2">Karşılaşma</div><div className="text-2xl">{sel.faced}</div></div>
+              <div className="panel-dark p-2"><div className="text-[13px] text-ink2">Yenildi</div><div className="text-2xl text-gold">{sel.defeated}</div></div>
+              <div className="panel-dark p-2"><div className="text-[13px] text-ink2">En hızlı</div><div className="text-2xl text-xp">{sel.fastest ? `${sel.fastest}g` : '—'}</div></div>
+            </div>
+            {sel.weak && (
+              <div className="panel-dark p-2 font-pixel flex items-center justify-center gap-2" style={{ color: CAT_INFO[sel.weak].color }}>
+                <Icon name={CAT_INFO[sel.weak].icon} size={24} />Zayıf noktası: {CAT_INFO[sel.weak].name} görevleri ×1.5
+              </div>
+            )}
+          </div>
+        )}
+      </Sheet>
+    </section>
   )
 }
 

@@ -1,6 +1,6 @@
 // Kahraman: büyük karakter vitrini, güç değerleri, ekipman yuvaları, rozetler.
 import { useEffect, useRef, useState } from 'react'
-import { ACHIEVEMENTS, CAT_INFO, equipItem, levelReward, SHOP, titleFor, TITLES, unlocksAt, type Category, type Hero, type Slot } from '../lib/game'
+import { ACHIEVEMENTS, CAT_INFO, equipItem, levelReward, SHOP, STAT_EFFECT, statBonus, titleFor, TITLES, unlocksAt, type Category, type Hero, type Slot } from '../lib/game'
 import { CLASS_INFO, type Gear } from '../game/art/hero'
 import { HeroSprite, Icon, PetSprite } from '../game/Sprite'
 import { fx } from '../game/fx'
@@ -87,8 +87,12 @@ export function HeroScreen() {
             <Icon name={CAT_INFO[c].icon} size={26} />
             <span className="font-pixel w-[58px] text-[17px]">{CAT_INFO[c].name}</span>
             <Bar value={h.stats[c] ?? 0} max={maxStat} color={CAT_INFO[c].color} label={h.stats[c] ?? 0} className="flex-1" h={20} />
+            <span className="font-pixel text-[13px] w-[78px] text-right flex items-center justify-end gap-0.5" style={{ color: CAT_INFO[c].color }} title={`${STAT_EFFECT[c].what} bonusu`}>
+              <Icon name={STAT_EFFECT[c].icon} size={12} />{STAT_EFFECT[c].unit(statBonus(h.stats[c] ?? 0))}
+            </span>
           </div>
         ))}
+        <div className="font-pixel text-[13px] text-ink2 text-center">Her görev kendi gücünü +1 artırır · bonus = √güç (en çok %20)</div>
       </section>
 
       {/* Rozetler */}
