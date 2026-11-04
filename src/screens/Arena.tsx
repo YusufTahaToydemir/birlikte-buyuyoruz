@@ -212,7 +212,7 @@ function Fighter({ name, hero, xp, crown, color, id, flip, isOnline }: { name: s
       <div style={flip ? { transform: 'scaleX(-1)' } : undefined}>
         <HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={2.5} />
       </div>
-      <div className="font-pixel text-[17px] truncate max-w-full flex items-center gap-1">{isOnline && <span className="w-2.5 h-2.5 rounded-full bg-ok border-2 border-edge shrink-0" title="Çevrimiçi" />}{name}</div>
+      <div className="font-pixel text-[17px] truncate max-w-full flex items-center gap-1">{isOnline && <span className="w-2.5 h-2.5 rounded-full bg-ok border-2 border-edge shrink-0" title="Çevrimiçi" />}{name}{hero.special && <Icon name="shield" size={16} />}</div>
       <div className="font-pixel text-xl flex items-center gap-1" style={{ color }}><Icon name="star" size={18} />{xp}</div>
       <div className="font-pixel text-[14px] text-ink2">Sv {hero.level}</div>
     </div>

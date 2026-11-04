@@ -1,6 +1,6 @@
 // Ayarlar: zorluk (6 kademe), ses, görünüm/sınıf/ad, kurtarma kodları, çıkış, hesabı silme.
 import { useState } from 'react'
-import { deleteAccount, generateRecoveryCodes, setDifficulty, setReminder, signOut, updateHero } from '../lib/game'
+import { deleteAccount, generateRecoveryCodes, setDifficulty, setReminder, setSpecial, signOut, SPECIAL_EXTRA, SPECIAL_HIDE, updateHero } from '../lib/game'
 import { disablePush, enablePush, pushSupported } from '../lib/push'
 import { CLASS_INFO, type HeroClass, type Look } from '../game/art/hero'
 import { HeroSprite, Icon, Portrait } from '../game/Sprite'
@@ -12,7 +12,7 @@ import { DIFFICULTIES, DifficultyPicker, LookEditor } from './CreateHero'
 export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { game, run, refresh, go } = useGame()
   const h = game.hero!
-  const [view, setView] = useState<'main' | 'look' | 'codes' | 'delete'>('main')
+  const [view, setView] = useState<'main' | 'look' | 'codes' | 'delete' | 'special'>('main')
   const [musicOn, setMusicOn] = useState(music.isEnabled())
   const close = () => { setView('main'); onClose() }
 
@@ -67,6 +67,10 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
             </button>
           </div>
 
+          <button className={`pbtn ${game.special.on ? 'pbtn-blue' : 'pbtn-dark'} w-full`} onClick={() => { sfx.click(); setView('special') }}>
+            <Icon name="shield" size={22} />Özel gün modu{game.special.on && <span className="text-[14px] bg-edge/50 rounded px-1.5">Açık · {game.special.days}. gün</span>}
+          </button>
+
           <section className="space-y-2">
             <div className="font-pixel text-lg flex items-center gap-2"><Icon name="bolt" size={22} />Bildirimler
               {!pushSupported() && <span className="ml-auto text-[13px] text-ink2">Bu cihazda yok</span>}
@@ -98,10 +102,60 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
           <button className="w-full text-[15px] text-ink2 underline py-2" onClick={() => setView('delete')}>Hesabı sil</button>
         </div>
       )}
+      {view === 'special' && <SpecialView onBack={() => setView('main')} />}
       {view === 'look' && <LookView onBack={() => setView('main')} />}
       {view === 'codes' && <CodesView onBack={() => setView('main')} />}
       {view === 'delete' && <DeleteView onBack={() => setView('main')} />}
     </Sheet>
+  )
+}
+
+/** Özel gün modu: seçilen ibadet görevleri listeden kalkar; yerine hafif görevler gelir. XP, altın ve hasar aynen aktarılır. */
+function SpecialView({ onBack }: { onBack: () => void }) {
+  const { game, run } = useGame()
+  const sp = game.special
+  const [hide, setHide] = useState<string[]>(sp.hide)
+  const [extra, setExtra] = useState<string[]>(sp.extra)
+  const [busy, setBusy] = useState(false)
+  const toggle = (list: string[], set: (l: string[]) => void, code: string) => { sfx.click(); set(list.includes(code) ? list.filter(c => c !== code) : [...list, code]) }
+  const dirty = JSON.stringify([...hide].sort()) !== JSON.stringify([...sp.hide].sort()) || JSON.stringify([...extra].sort()) !== JSON.stringify([...sp.extra].sort())
+  async function save(on: boolean | null) {
+    setBusy(true)
+    try {
+      const g = await run(() => setSpecial(on, hide, extra.length ? extra : null))
+      if (g) { sfx.heal(); toast(on === true ? 'Özel gün modu açık' : on === false ? 'Özel gün modu kapalı' : 'Kaydedildi') }
+    } finally { setBusy(false) }
+  }
+  const chip = (o: { code: string; name: string; icon: string }, list: string[], set: (l: string[]) => void) => {
+    const on = list.includes(o.code)
+    return (
+      <button key={o.code} className={`panel-dark px-2 py-1.5 flex items-center gap-2 text-left font-pixel text-[15px] ${on ? '!border-gold text-ink' : 'text-ink2 opacity-70'}`} onClick={() => toggle(list, set, o.code)} aria-pressed={on}>
+        <Icon name={o.icon} size={24} className={on ? '' : 'grayscale'} /><span className="flex-1 leading-tight">{o.name}</span>{on && <Icon name="check" size={16} />}
+      </button>
+    )
+  }
+  return (
+    <div className="space-y-3">
+      <div className="panel-dark p-3 font-pixel text-[15px] leading-tight space-y-1">
+        <div className="flex items-center gap-2 text-lg text-xp"><Icon name="shield" size={24} />Nasıl çalışır?</div>
+        <p className="text-ink">Seçtiğin ibadet görevleri o günlerde listeden kalkar, yerine hafif görevler gelir.</p>
+        <p className="text-ok">XP, altın ve canavar hasarı aynen yerine gelen görevlere aktarılır; geride kalmazsın. Seri, can ve kombo etkilenmez.</p>
+        <p className="text-ink2">Eşin yalnızca küçük bir simge görür. 14 gün sonra kendiliğinden kapanır.</p>
+      </div>
+      <div className="font-pixel text-lg flex items-center gap-2"><Icon name="moon" size={22} />Listeden kalkacaklar</div>
+      <div className="grid grid-cols-2 gap-2">{SPECIAL_HIDE.map(o => chip(o, hide, setHide))}</div>
+      <div className="font-pixel text-lg flex items-center gap-2"><Icon name="sparkle" size={22} />Yerine gelecekler</div>
+      <div className="grid grid-cols-2 gap-2">{SPECIAL_EXTRA.map(o => chip(o, extra, setExtra))}</div>
+      {sp.on ? (
+        <div className="grid grid-cols-2 gap-2">
+          <button className="pbtn pbtn-red" disabled={busy} onClick={() => void save(false)}>Modu kapat</button>
+          <button className="pbtn pbtn-gold" disabled={busy || !dirty || extra.length === 0} onClick={() => void save(null)}><Icon name="check" size={22} />Kaydet</button>
+        </div>
+      ) : (
+        <button className="pbtn pbtn-blue w-full text-xl" disabled={busy || extra.length === 0} onClick={() => void save(true)}><Icon name="shield" size={24} />Modu aç</button>
+      )}
+      <button className="pbtn pbtn-dark w-full" onClick={onBack}>◀ Geri</button>
+    </div>
   )
 }
 

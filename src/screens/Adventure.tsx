@@ -1,6 +1,6 @@
 // Macera: sahnede kahraman ve haftanın canavarı; görevler tek dokunuşla yapılır.
 import { useRef, useState, type ReactNode } from 'react'
-import { completeQuest, setIzin, drinkPotion, useSkill, CAT_INFO, DAY_EVENTS, SKILLS, type Quest } from '../lib/game'
+import { completeQuest, setIzin, setSpecial, drinkPotion, useSkill, CAT_INFO, DAY_EVENTS, SKILLS, type Quest } from '../lib/game'
 import { BossSprite, HeroSprite, Icon, PetSprite, SceneAmbient, SceneBg } from '../game/Sprite'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
@@ -127,6 +127,7 @@ export function Adventure() {
                 {!pOn && !pDone && <span className="absolute -top-4 left-1/2 font-pixel text-[13px] text-ink2 zz">z z</span>}
                 <HeroSprite cls={partner.class} look={partner.look} gear={partner.equipped} scale={2.6} pose={pDone ? 'joy' : undefined} label={partner.name} />
                 <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-edge ${pOn ? 'bg-ok' : 'bg-ink2/40'}`} />
+                {partner.special && <span className="absolute -top-2 -left-2"><Icon name="shield" size={16} /></span>}
               </div>
               {partner.equipped.pet && <div className="absolute left-[52%] bottom-[12px]"><PetSprite petKey={partner.equipped.pet} scale={1.4} /></div>}
             </>
@@ -170,6 +171,17 @@ export function Adventure() {
           <Icon name="shield" size={26} />
         </button>
       </div>
+
+      {game.special.on && (
+        <div className="panel p-2 flex items-center gap-3 dropin !border-xp" aria-label="Özel gün modu">
+          <span className="panel-dark w-[46px] h-[46px] grid place-items-center shrink-0"><Icon name="shield" size={34} className="glow" /></span>
+          <div className="min-w-0 flex-1">
+            <div className="font-pixel text-lg leading-tight text-xp">Özel gün modu · {game.special.days}. gün</div>
+            <div className="font-pixel text-[14px] text-ink2 leading-tight">{game.special.days >= 7 ? 'Hâlâ açık mı? Bittiyse kapat.' : 'İbadet görevleri yerine hafif görevler. XP aynı.'}</div>
+          </div>
+          <button className="pbtn pbtn-dark !min-h-[40px] !px-3 text-[15px]" onClick={() => { sfx.click(); void run(() => setSpecial(false)) }}>Kapat</button>
+        </div>
+      )}
 
       {ev && (
         <div className="panel p-2 flex items-center gap-3 dropin" style={{ borderColor: ev.color }} aria-label="Günün olayı">

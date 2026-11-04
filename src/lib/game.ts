@@ -14,6 +14,7 @@ export interface Hero {
   shards: number; lastSeen: string | null
   skillReadyAt: string | null
   remindHour: number | null; pushSubs: number
+  special: boolean
 }
 export interface Partner extends Hero { todayDone: number; todayTotal: number; todayCodes: string[] }
 export type DayEvent = 'SPIRIT_SURGE' | 'MIND_DAY' | 'BODY_DAY' | 'ORDER_DAY' | 'GOLD_RAIN' | 'TWIN' | 'BOSS_RAGE' | 'COMBO_DAY'
@@ -25,6 +26,7 @@ export interface Game {
   serverTime: string; today: string; weekStart: string; weekEnd: string
   config: { difficulties: Difficulty[]; cheerXP: number; cheersPerDay: number; healAmount: number; bossGold: number; comboGold: number; comboDamage: number; shardsPerTicket: number; duelRewardsPerDay: number; vapidPublic?: string }
   hero: Hero | null
+  special: { on: boolean; since: string | null; hide: string[]; extra: string[]; days: number }
   day: { izin: boolean; difficulty: number; event: DayEvent | null } | null
   quests: Quest[]
   partner: Partner | null
@@ -239,6 +241,30 @@ export const getSeason = () => rpc<Season>('get_season')
 export const pushSubscribe = (endpoint: string, p256dh: string, auth: string) => rpc<{ ok: boolean; subs: number }>('push_subscribe', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth })
 export const pushUnsubscribe = (endpoint: string | null) => rpc<{ ok: boolean; subs: number }>('push_unsubscribe', { p_endpoint: endpoint })
 export const setReminder = (hour: number | null) => rpc<Game>('set_reminder', { p_hour: hour })
+/** Özel gün modu: on=true/false aç-kapat, null ise yalnızca listeleri günceller */
+export const setSpecial = (on: boolean | null, hide: string[] | null = null, extra: string[] | null = null) => rpc<Game>('set_special', { p_on: on, p_hide: hide, p_extra: extra })
+/** Özel günde listeden kalkabilecek görevler (varsayılan: namazlar, Duha/teheccüd, Kur'an, tesbihat) */
+export const SPECIAL_HIDE: Array<{ code: string; name: string; icon: string; def: boolean }> = [
+  { code: 'FAJR', name: 'Sabah namazı', icon: 'fajr', def: true },
+  { code: 'DHUHR', name: 'Öğle namazı', icon: 'dhuhr', def: true },
+  { code: 'ASR', name: 'İkindi namazı', icon: 'asr', def: true },
+  { code: 'MAGHRIB', name: 'Akşam namazı', icon: 'maghrib', def: true },
+  { code: 'ISHA', name: 'Yatsı namazı', icon: 'isha', def: true },
+  { code: 'SUNNAH', name: 'Duha / teheccüd', icon: 'moon', def: true },
+  { code: 'QURAN', name: 'Kur\'an', icon: 'quran', def: true },
+  { code: 'DHIKR', name: 'Tesbihat', icon: 'beads', def: true },
+  { code: 'STUDY', name: 'Dinî çalışma', icon: 'lamp', def: false },
+]
+/** Yerine gelebilecek hafif görevler (ilk üçü varsayılan) */
+export const SPECIAL_EXTRA: Array<{ code: string; name: string; icon: string; def: boolean }> = [
+  { code: 'SP_DUA', name: 'Dua et', icon: 'pray', def: true },
+  { code: 'SP_ISTIGFAR', name: '100 istiğfar', icon: 'beads', def: true },
+  { code: 'SP_LISTEN', name: 'Sohbet veya ilmihal dinle', icon: 'music', def: true },
+  { code: 'SP_SALAVAT', name: 'Salavat getir', icon: 'sparkle', def: false },
+  { code: 'SP_TEFEKKUR', name: '10 dk tefekkür', icon: 'moon', def: false },
+  { code: 'SP_SADAKA', name: 'Sadaka ver', icon: 'coin', def: false },
+  { code: 'SP_SIYER', name: 'Siyer veya dinî hikâye oku', icon: 'book', def: false },
+]
 /** Mektup damgaları (piksel ikon adları) */
 export const STAMPS = ['heart', 'flower', 'star', 'sun', 'moon', 'gift', 'sparkle', 'coin']
 
