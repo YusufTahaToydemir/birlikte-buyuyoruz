@@ -38,8 +38,8 @@ begin
   if coalesce(g->'day'->>'event', '-') <> coalesce(bb_day_event(cp, v_today), '-') then raise exception 'gün olayı'; end if;
   if (select coalesce(event, '-') from hero_days where user_id = b and local_date = v_today) <> coalesce(bb_day_event(cp, v_today), '-') then raise exception 'eşin olayı farklı'; end if;
   -- olaysız ve SPIRIT_SURGE günlerini bul, FAJR hasarı 2 katı; MIND_DAY'de ENGLISH XP 2 katı
-  select min(v_today + i) into d0 from generate_series(1, 90) i where bb_day_event(cp, v_today + i) is null;
-  select min(v_today + i) into d1 from generate_series(1, 90) i where bb_day_event(cp, v_today + i) = 'SPIRIT_SURGE';
+  select min(v_today + gs) into d0 from generate_series(1, 90) gs where bb_day_event(cp, v_today + gs) is null;
+  select min(v_today + gs) into d1 from generate_series(1, 90) gs where bb_day_event(cp, v_today + gs) = 'SPIRIT_SURGE';
   perform bb_generate_day(a, d0); perform bb_generate_day(a, d1);
   select damage into v_dmg0 from quests where user_id = a and local_date = d0 and code = 'FAJR';
   select damage into v_dmg1 from quests where user_id = a and local_date = d1 and code = 'FAJR';
@@ -47,7 +47,7 @@ begin
   select damage into v_dmg1 from quests where user_id = a and local_date = d1 and code = 'ENGLISH';
   select damage into v_dmg0 from quests where user_id = a and local_date = d0 and code = 'ENGLISH';
   if v_dmg1 <> v_dmg0 then raise exception 'ruh dalgası zekâyı etkiledi'; end if;
-  select min(v_today + i) into d1 from generate_series(1, 90) i where bb_day_event(cp, v_today + i) = 'GOLD_RAIN';
+  select min(v_today + gs) into d1 from generate_series(1, 90) gs where bb_day_event(cp, v_today + gs) = 'GOLD_RAIN';
   perform bb_generate_day(a, d1);
   if (select min(gold) from quests where user_id = a and local_date = d1 and kind = 'SIDE') < 3 * (select min(gold) from quests where user_id = a and local_date = d0 and kind = 'SIDE') then raise exception 'altın yağmuru'; end if;
   res := res || E'\ngünün olayı · çift için ortak; Ruh Dalgası FAJR hasarı 2×, Zekâ etkilenmez; Altın Yağmuru yan görev 3× ✓';
