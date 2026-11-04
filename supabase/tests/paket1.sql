@@ -86,7 +86,7 @@ begin
   if (select count(*) from jsonb_array_elements((r->'me') || (g->'me')) d where (d->>'izin')::boolean) <> 1 then raise exception 'izin günü sayısı'; end if;
   if (r->'totals'->>'fullDays')::int <> 2 then raise exception 'toplam'; end if;
   r := get_day(v_today - 2);
-  if (select count(*) from jsonb_array_elements(r->'me') q where (q->>'done')::boolean) <> 1 or (r->'meDay'->>'allDone')::boolean then raise exception 'gün detayı'; end if;
+  if (select count(*) from jsonb_array_elements(r->'me') dq where (dq->>'done')::boolean) <> 1 or (r->'meDay'->>'allDone')::boolean then raise exception 'gün detayı'; end if;
   if jsonb_typeof(r->'partner') <> 'array' then raise exception 'eş listesi'; end if;
   res := res || E'\ntakvim · 2 tam gün, 1 izin, gün detayında 1 görev ✓';
 
