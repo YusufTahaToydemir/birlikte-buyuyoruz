@@ -12,7 +12,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
         name: 'Birlikte Büyüyoruz',
@@ -35,6 +35,9 @@ export default defineConfig({
       workbox: {
         // Only the static shell is cached. Supabase API responses are never cached.
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         navigateFallback: `${base}index.html`,
         runtimeCaching: [],
       },
