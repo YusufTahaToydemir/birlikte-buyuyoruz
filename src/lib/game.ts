@@ -95,6 +95,7 @@ const ERROR_TEXT: Record<string, string> = {
   NOT_ALLOWED: 'Bu özellik bu karakter için kapalı.',
   UNSUPPORTED: 'Bu cihaz bildirimleri desteklemiyor. iPhone’da önce ana ekrana ekle.',
   DENIED: 'Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.',
+  PUSH_SERVICE: 'Google bildirim servisine ulaşılamadı. Wi‑Fi’ı veya mobil veriyi değiştirip tekrar dene; olmazsa Chrome’u kapatıp aç.',
 }
 export function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : e instanceof Error ? e.message : String(e)

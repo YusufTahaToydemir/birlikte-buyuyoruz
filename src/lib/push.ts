@@ -23,7 +23,19 @@ export async function enablePush(vapidPublic: string) {
   if (perm !== 'granted') throw new Error('DENIED')
   const reg = await navigator.serviceWorker.ready
   let sub = await reg.pushManager.getSubscription()
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidPublic) as BufferSource })
+  if (!sub) {
+    // Android Chrome'da FCM kaydı ara sıra geçici olarak düşer ("push service error"): 3 kez, artan beklemeyle dene.
+    const key = b64ToBytes(vapidPublic) as BufferSource
+    for (let i = 0; i < 3 && !sub; i++) {
+      try { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }) }
+      catch (e) {
+        if (e instanceof DOMException && e.name === 'NotAllowedError') throw new Error('DENIED')
+        if (i === 2) throw new Error('PUSH_SERVICE')
+        await new Promise(r => setTimeout(r, 1500 * (i + 1)))
+      }
+    }
+  }
+  if (!sub) throw new Error('PUSH_SERVICE')
   const j = sub.toJSON()
   await pushSubscribe(sub.endpoint, j.keys?.p256dh ?? '', j.keys?.auth ?? '')
 }
