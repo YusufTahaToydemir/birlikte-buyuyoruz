@@ -17,14 +17,14 @@ const CLASS_PERK: Record<HeroClass, string> = {
 }
 export const DIFFICULTIES = [
   { n: 1, name: 'Çırak', mult: 1.0, damage: 2 },
-  { n: 2, name: 'Acemi', mult: 1.25, damage: 3 },
-  { n: 3, name: 'Yiğit', mult: 1.5, damage: 4 },
-  { n: 4, name: 'Kahraman', mult: 2.0, damage: 5 },
-  { n: 5, name: 'Efsane', mult: 2.5, damage: 6 },
-  { n: 6, name: 'Mitik', mult: 3.0, damage: 8 },
+  { n: 2, name: 'Acemi', mult: 1.1, damage: 2.25 },
+  { n: 3, name: 'Yiğit', mult: 1.35, damage: 2.5 },
+  { n: 4, name: 'Kahraman', mult: 1.7, damage: 2.5 },
+  { n: 5, name: 'Efsane', mult: 2.1, damage: 2.75 },
+  { n: 6, name: 'Destansı', mult: 2.6, damage: 3 },
 ]
-// Zorluğa göre açılan alanlar
-export const DIFF_UNLOCKS: Record<number, string[]> = { 1: ['moon', 'book', 'sword'], 2: ['sun', 'beads'], 3: ['lamp', 'apple'], 4: ['nocandy'], 5: ['nophone'], 6: ['sparkle'] }
+// Zorluğa göre açılan alanlar (5: Duha/teheccüd, 6: kaza namazı)
+export const DIFF_UNLOCKS: Record<number, string[]> = { 1: ['moon', 'book', 'sword'], 2: ['sun', 'beads'], 3: ['lamp', 'apple'], 4: ['nocandy'], 5: ['nophone', 'sparkle'], 6: ['pray'] }
 
 export function CreateHero({ onDone }: { onDone: (g: Game) => void }) {
   const [step, setStep] = useState(0)
