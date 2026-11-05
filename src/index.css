@@ -4,6 +4,16 @@
 @import "@fontsource/pixelify-sans/400.css";
 @import "@fontsource/pixelify-sans/700.css";
 
+/* Rakamlar: piksel yazı tipinde 2-5-7 karışıyordu; yalnızca 0-9 için net, kalın bir yazı tipi kullanılır (harfler piksel kalır) */
+@font-face {
+  font-family: "KyronNum";
+  src: url("../node_modules/@fontsource/nunito-sans/files/nunito-sans-latin-800-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+  size-adjust: 112%;
+}
+
 @theme {
   --color-bg: #17112a;
   --color-bg2: #1f1838;
@@ -20,7 +30,7 @@
   --color-ticket: #ffd166;
   --color-magic: #b98aff;
   --font-sans: "Nunito Sans", system-ui, sans-serif;
-  --font-pixel: "Pixelify Sans", "Nunito Sans", monospace;
+  --font-pixel: "KyronNum", "Pixelify Sans", "Nunito Sans", monospace;
 }
 
 html { background: var(--color-bg); }
@@ -36,7 +46,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
 .px { image-rendering: pixelated; image-rendering: crisp-edges; }
 canvas.px { object-fit: cover; }
-.font-pixel { font-family: var(--font-pixel); letter-spacing: .035em; }
+.font-pixel { font-family: var(--font-pixel); letter-spacing: .035em; font-variant-numeric: lining-nums; }
 
 /* piksel paneller ve düğmeler */
 .panel {

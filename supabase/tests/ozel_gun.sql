@@ -96,6 +96,24 @@ begin
   if (select special_since from heroes where user_id = a) is not null or exists (select 1 from quests where user_id = a and local_date = v_today + 1 and (hidden or code like 'SP\_%')) then raise exception 'otomatik kapanma'; end if;
   res := res || E'\notomatik kapanma · 14 günü aşan mod kapandı, yeni gün normal ✓';
 
+  -- 7b) Yalnızca kadın karakter: erkek (B) açamaz, kapatabilir; kadın (A) açıkken görünümü erkeğe çevrilirse mod kapanır
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', b::text, true);
+  begin g := set_special(true); raise exception 'erkek kahramanda açıldı';
+  exception when others then if sqlerrm <> 'NOT_ALLOWED' then raise; end if; end;
+  begin g := set_special(null, array['FAJR'], null); raise exception 'erkek kahramanda liste değişti';
+  exception when others then if sqlerrm <> 'NOT_ALLOWED' then raise; end if; end;
+  g := set_special(false);
+  if (g->'special'->>'on')::boolean then raise exception 'erkek kapatamadı'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', a::text, true);
+  g := set_special(true);
+  if not (g->'special'->>'on')::boolean then raise exception 'kadın açamadı'; end if;
+  update heroes set look = look || '{"gender":"M"}'::jsonb where user_id = a;
+  if (select special_since from heroes where user_id = a) is not null then raise exception 'görünüm erkek olunca mod kapanmadı'; end if;
+  update heroes set look = look || '{"gender":"F"}'::jsonb where user_id = a;
+  res := res || E'\nkadın karakter · erkek açamaz/liste değiştiremez (NOT_ALLOWED), kapatabilir; görünüm erkeğe dönünce mod kapanır ✓';
+
   -- 8) Yetkiler
   if not has_function_privilege('authenticated', 'set_special(boolean, text[], text[])', 'execute') then raise exception 'yetki eksik'; end if;
   if has_function_privilege('authenticated', 'bb_special_apply(uuid, date)', 'execute') or has_function_privilege('authenticated', 'bb_special_clear(uuid, date)', 'execute') then raise exception 'fazla yetki'; end if;
