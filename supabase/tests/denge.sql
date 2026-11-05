@@ -43,9 +43,9 @@ begin
     where q.min_difficulty <= d and bb_quest_title(q.title, q.targets, d, gg.x) like '%{t}%';
   if v_n > 0 then raise exception '{t} kalan başlık: %', v_n; end if;
   if (select title from quests where user_id = a and local_date = v_today and code = 'QURAN') <> 'Kur''an · 20 sayfa'
-     or (select title from quests where user_id = a and local_date = v_today and code = 'ENGLISH') <> 'İngilizce · 50 kelime'
+     or (select title from quests where user_id = a and local_date = v_today and code = 'ENGLISH') <> 'İngilizce · 30 kelime'
      or (select title from quests where user_id = a and local_date = v_today and code = 'READING') <> 'Kitap · 60 dk' then raise exception 'Kur''an/İngilizce/Kitap hedefi'; end if;
-  res := res || E'\ngörevler · Destansı 17 görev (kaza 2 vakit + duha), spor kadın 60 / erkek 75, Kur''an 20 s, İngilizce 50, Kitap 60 dk; hiçbir başlıkta {t} yok ✓';
+  res := res || E'\ngörevler · Destansı 17 görev (kaza 2 vakit + duha), spor kadın 60 / erkek 75, Kur''an 20 s, İngilizce 30, Kitap 60 dk; hiçbir başlıkta {t} yok ✓';
 
   -- 3) Eşit katkı: Çırak ve Destansı'nın tam günü canavara yaklaşık aynı hasar; XP yine zorlukla büyür
   select sum(damage), sum(xp) into v_da, v_xa from quests where user_id = a and local_date = v_today;
