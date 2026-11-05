@@ -7,6 +7,7 @@ import { sfx } from '../game/sfx'
 import { Bar, Segments, Sheet, Stars, toastError, useGame } from '../game/ui'
 import { timeOfDay } from '../game/art/scene'
 import { online } from './Games'
+import { PartnerSheet } from './PartnerSheet'
 
 export function Adventure() {
   const { game, setGame, run, go } = useGame()
@@ -32,6 +33,16 @@ export function Adventure() {
   const skillLeftMs = Math.max(0, readyAt - new Date(game.serverTime).getTime())
   const skillReady = skillLeftMs === 0
   const [skillOpen, setSkillOpen] = useState(false)
+  // Eşin yeni tamamladığı görev sayısı (en son pencereyi açtığından beri); gün değişince sıfırdan sayılır
+  const seenKey = `kyron.pseen.${game.today}`
+  const [pSeen, setPSeen] = useState(() => { try { return Number(localStorage.getItem(seenKey) ?? 0) } catch { return 0 } })
+  const [partnerOpen, setPartnerOpen] = useState(false)
+  const pCount = partner?.todayCodes?.length ?? 0
+  const newDone = Math.max(0, pCount - pSeen)
+  function openPartner() {
+    sfx.click(); setPartnerOpen(true); setPSeen(pCount)
+    try { localStorage.setItem(seenKey, String(pCount)) } catch { /* depolama kapalı */ }
+  }
   /** Görev kartındaki küçük rozetler: olay çarpanı, canavar zayıflığı, çift gün */
   const badgesOf = (q: Quest): ReactNode[] => {
     const out: ReactNode[] = []
@@ -123,12 +134,13 @@ export function Adventure() {
           const pOn = online(partner.lastSeen, game.serverTime)
           return (
             <>
-              <div className={`absolute left-[36%] bottom-[10px] ${pDone ? 'bob' : ''}`} style={{ opacity: pOn || pDone ? 1 : 0.78 }}>
-                {!pOn && !pDone && <span className="absolute -top-4 left-1/2 font-pixel text-[13px] text-ink2 zz">z z</span>}
+              <button className={`absolute left-[36%] bottom-[10px] ${pDone ? 'bob' : ''}`} style={{ opacity: pOn || pDone ? 1 : 0.78 }} onClick={openPartner} aria-label={`${partner.name}: bugün`}>
+                {newDone > 0 && <span className="absolute -top-5 left-1/2 -translate-x-1/2 panel-dark flex items-center gap-0.5 px-1.5 py-0.5 font-pixel text-[14px] text-ok bob whitespace-nowrap"><Icon name="check" size={14} />+{newDone}</span>}
+                {!pOn && !pDone && newDone === 0 && <span className="absolute -top-4 left-1/2 font-pixel text-[13px] text-ink2 zz">z z</span>}
                 <HeroSprite cls={partner.class} look={partner.look} gear={partner.equipped} scale={2.6} pose={pDone ? 'joy' : undefined} label={partner.name} />
                 <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-edge ${pOn ? 'bg-ok' : 'bg-ink2/40'}`} />
                 {partner.special && <span className="absolute -top-2 -left-2"><Icon name="shield" size={16} /></span>}
-              </div>
+              </button>
               {partner.equipped.pet && <div className="absolute left-[52%] bottom-[12px]"><PetSprite petKey={partner.equipped.pet} scale={1.4} /></div>}
             </>
           )
@@ -192,6 +204,8 @@ export function Adventure() {
           </div>
         </div>
       )}
+
+      {partner && <PartnerSheet open={partnerOpen} onClose={() => setPartnerOpen(false)} partner={partner} />}
 
       <Sheet open={skillOpen} onClose={() => setSkillOpen(false)} title={<span className="flex items-center gap-2"><Icon name={skill.icon} size={26} />{skill.name}</span>}>
         <div className="space-y-3">

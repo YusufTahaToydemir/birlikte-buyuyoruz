@@ -243,6 +243,15 @@ export const getSeason = () => rpc<Season>('get_season')
 export const pushSubscribe = (endpoint: string, p256dh: string, auth: string) => rpc<{ ok: boolean; subs: number }>('push_subscribe', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth })
 export const pushUnsubscribe = (endpoint: string | null) => rpc<{ ok: boolean; subs: number }>('push_unsubscribe', { p_endpoint: endpoint })
 export const setReminder = (hour: number | null) => rpc<Game>('set_reminder', { p_hour: hour })
+/** Eşin bugünü: yapılan görevler (özel gün görevlerinin adı null), 7 günlük çubuk, sayılar, bildirim tercihi */
+export interface PartnerFeed {
+  hasPartner: boolean; notify: boolean
+  today?: Array<{ code: string; kind: 'DAILY' | 'SIDE'; title: string | null; icon: string; at: string | null }>
+  week?: Array<{ date: string; done: number; total: number }>
+  weekDone?: number; totalDone?: number; weekDamage?: number; badges?: number
+}
+export const getPartnerFeed = () => rpc<PartnerFeed>('get_partner_feed')
+export const setPartnerNotify = (on: boolean) => rpc<{ notify: boolean }>('set_partner_notify', { p_on: on })
 /** Özel gün modu: on=true/false aç-kapat, null ise yalnızca listeleri günceller */
 export const setSpecial = (on: boolean | null, hide: string[] | null = null, extra: string[] | null = null) => rpc<Game>('set_special', { p_on: on, p_hide: hide, p_extra: extra })
 /** Özel günde listeden kalkabilecek görevler (varsayılan: namazlar, Duha/teheccüd, Kur'an, tesbihat) */
