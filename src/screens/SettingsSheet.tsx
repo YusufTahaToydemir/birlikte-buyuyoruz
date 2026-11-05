@@ -67,9 +67,11 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
             </button>
           </div>
 
-          <button className={`pbtn ${game.special.on ? 'pbtn-blue' : 'pbtn-dark'} w-full`} onClick={() => { sfx.click(); setView('special') }}>
-            <Icon name="shield" size={22} />Özel gün modu{game.special.on && <span className="text-[14px] bg-edge/50 rounded px-1.5">Açık · {game.special.days}. gün</span>}
-          </button>
+          {h.look.gender === 'F' && (
+            <button className={`pbtn ${game.special.on ? 'pbtn-blue' : 'pbtn-dark'} w-full`} onClick={() => { sfx.click(); setView('special') }}>
+              <Icon name="shield" size={22} />Özel gün modu{game.special.on && <span className="text-[14px] bg-edge/50 rounded px-1.5">Açık · {game.special.days}. gün</span>}
+            </button>
+          )}
 
           <section className="space-y-2">
             <div className="font-pixel text-lg flex items-center gap-2"><Icon name="bolt" size={22} />Bildirimler

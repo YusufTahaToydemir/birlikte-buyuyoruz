@@ -92,6 +92,7 @@ const ERROR_TEXT: Record<string, string> = {
   SKILL_COOLDOWN: 'Yeteneğin henüz dolmadı.',
   SKILL_NOTHING: 'Bugün yapılacak görev kalmamış.',
   MAX_LEVEL: 'Bu parça son seviyesinde.',
+  NOT_ALLOWED: 'Bu özellik bu karakter için kapalı.',
   UNSUPPORTED: 'Bu cihaz bildirimleri desteklemiyor. iPhone’da önce ana ekrana ekle.',
   DENIED: 'Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.',
 }
