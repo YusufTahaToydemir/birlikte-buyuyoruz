@@ -40,6 +40,29 @@ export async function enablePush(vapidPublic: string) {
   await pushSubscribe(sub.endpoint, j.keys?.p256dh ?? '', j.keys?.auth ?? '')
 }
 
+/** Abonelik düşünce nedenini ayırt etmek için kısa tanı: gerçek hata + rastgele anahtarla deneme. */
+export async function pushDiag(vapidPublic: string): Promise<string> {
+  const err = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+  const ua = navigator.userAgent
+  const browser = /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /MiuiBrowser|XiaoMi/i.test(ua) ? 'Mi Browser' : /EdgA/.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox/.test(ua) ? 'Firefox' : /Chrome\/(\d+)/.test(ua) ? `Chrome ${ua.match(/Chrome\/(\d+)/)![1]}` : 'Diğer'
+  const lines = [
+    `Tarayıcı: ${browser}${matchMedia('(display-mode: standalone)').matches ? ' (uygulama)' : ''}`,
+    `İnternet: ${navigator.onLine ? 'var' : 'yok'} · İzin: ${Notification.permission}`,
+  ]
+  try {
+    const reg = await navigator.serviceWorker.ready
+    try { const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidPublic) as BufferSource }); await s.unsubscribe(); lines.push('Kyron anahtarı: ÇALIŞTI') }
+    catch (e) { lines.push(`Kyron anahtarı: ${err(e)}`) }
+    try {
+      const k = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign'])
+      const raw = new Uint8Array(await crypto.subtle.exportKey('raw', k.publicKey))
+      const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw as BufferSource }); await s.unsubscribe()
+      lines.push('Rastgele anahtar: ÇALIŞTI')
+    } catch (e) { lines.push(`Rastgele anahtar: ${err(e)}`) }
+  } catch (e) { lines.push(`Service worker: ${err(e)}`) }
+  return lines.join('\n')
+}
+
 export async function disablePush() {
   const sub = await currentSubscription()
   if (sub) { await pushUnsubscribe(sub.endpoint); await sub.unsubscribe() } else await pushUnsubscribe(null)

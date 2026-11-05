@@ -1,7 +1,7 @@
 // Ayarlar: zorluk (6 kademe), ses, görünüm/sınıf/ad, kurtarma kodları, çıkış, hesabı silme.
 import { useState } from 'react'
 import { deleteAccount, generateRecoveryCodes, setDifficulty, setReminder, setSpecial, signOut, SPECIAL_EXTRA, SPECIAL_HIDE, updateHero } from '../lib/game'
-import { disablePush, enablePush, pushSupported } from '../lib/push'
+import { disablePush, enablePush, pushDiag, pushSupported } from '../lib/push'
 import { CLASS_INFO, type HeroClass, type Look } from '../game/art/hero'
 import { HeroSprite, Icon, Portrait } from '../game/Sprite'
 import { sfx } from '../game/sfx'
@@ -30,6 +30,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
     try { await updateHero({ sound: on }); await refresh(); if (on) sfx.coin() } catch (e) { toastError(e) }
   }
   const [pushBusy, setPushBusy] = useState(false)
+  const [pushDiagText, setPushDiagText] = useState('')
   const pushOn = h.pushSubs > 0
   async function togglePush() {
     setPushBusy(true)
@@ -37,7 +38,10 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
       if (pushOn) { await disablePush(); toast('Bildirimler kapalı') }
       else { await enablePush(game.config.vapidPublic ?? ''); sfx.ticket(); toast('Bildirimler açık') }
       await refresh()
-    } catch (e) { toastError(e) } finally { setPushBusy(false) }
+    } catch (e) {
+      toastError(e)
+      if (e instanceof Error && e.message === 'PUSH_SERVICE') setPushDiagText(await pushDiag(game.config.vapidPublic ?? ''))
+    } finally { setPushBusy(false) }
   }
   async function pickHour(hr: number | null) {
     const g = await run(() => setReminder(hr))
@@ -80,6 +84,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
             <button className={`pbtn ${pushOn ? 'pbtn-green' : 'pbtn-dark'} w-full`} disabled={pushBusy || !pushSupported()} onClick={() => void togglePush()} aria-pressed={pushOn}>
               <Icon name={pushOn ? 'sound' : 'mute'} size={22} />{pushOn ? 'Bildirimler açık' : 'Bildirimleri aç'}
             </button>
+            {pushDiagText && !pushOn && <pre className="panel-dark p-2 font-pixel text-[13px] text-ink2 whitespace-pre-wrap break-words select-all">{pushDiagText}</pre>}
             {pushOn && (
               <div className="space-y-1">
                 <div className="font-pixel text-[14px] text-ink2">Akşam hatırlatması (eksik görev varsa)</div>
