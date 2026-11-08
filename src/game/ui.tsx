@@ -89,6 +89,8 @@ export interface GameCtx {
   run: (fn: () => Promise<Game>) => Promise<Game | null>
   go: (tab: TabId) => void
   openSettings: () => void
+  /** Ortak evcil dostların yuvasını açar */
+  openPets: () => void
 }
 export type TabId = 'quest' | 'arena' | 'games' | 'hero' | 'loot'
 export const GameContext = createContext<GameCtx | null>(null)

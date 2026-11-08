@@ -4,17 +4,29 @@ vi.mock('./supabase', () => ({ supabase: {}, usernameToEmail: (u: string) => u }
 const { ApiError, errorText, SHOP, levelStart, levelReward, unlocksAt, titleFor } = await import('./game')
 import sql6 from '../../supabase/migrations/0006_progression_games.sql?raw'
 import sql7 from '../../supabase/migrations/0007_paket1.sql?raw'
+import sql17 from '../../supabase/migrations/0017_evcil_sudoku.sql?raw'
+import { PET_ITEMS, PET_SPECIES } from '../game/art/pets'
 const sql = sql6 + sql7
 
 describe('dükkan kataloğu', () => {
   it('sunucudaki fiyat, seviye ve kademelerle aynı', () => {
-    const rows = [...sql.matchAll(/\('([a-z_0-9]+)','[^']+','([A-Z]+)',(\d+),(\d+),(\d+),(\d+),\d+\)/g)]
+    // kişisel evcil hayvanlar 0017 ile kaldırıldı (artık ortak dost)
+    const rows = [...sql.matchAll(/\('([a-z_0-9]+)','[^']+','([A-Z]+)',(\d+),(\d+),(\d+),(\d+),\d+\)/g)].filter(r => r[2] !== 'PET')
     expect(rows.length).toBe(SHOP.length)
     for (const [, key, kind, tier, minLevel, price, effect] of rows) {
       const item = SHOP.find(s => s.key === key)
       expect(item, key).toBeDefined()
       expect(item).toMatchObject({ kind, tier: +tier, minLevel: +minLevel, price: +price, effect: +effect })
     }
+  })
+})
+
+describe('ortak evcil dost kataloğu', () => {
+  it('gardırop ve tür fiyatları sunucudakiyle aynı', () => {
+    const items = [...sql17.matchAll(/\{"key":"([a-z_]+)","name":"([^"]+)","slot":"([A-Z]+)","price":(\d+),"stage":(\d)\}/g)]
+    expect(items.length).toBe(PET_ITEMS.length)
+    for (const [, key, name, slot, price, stage] of items) expect(PET_ITEMS.find(i => i.key === key)).toEqual({ key, name, slot, price: +price, stage: +stage })
+    for (const [k, v] of Object.entries(PET_SPECIES)) expect(sql17).toContain(`"${k}": {"name": "${v.name}"`)
   })
 })
 

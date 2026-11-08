@@ -1,7 +1,8 @@
 // Macera: sahnede kahraman ve haftanın canavarı; görevler tek dokunuşla yapılır.
 import { useRef, useState, type ReactNode } from 'react'
 import { completeQuest, setIzin, setSpecial, drinkPotion, useSkill, CAT_INFO, DAY_EVENTS, SKILLS, type Quest } from '../lib/game'
-import { BossSprite, HeroSprite, Icon, PetSprite, SceneAmbient, SceneBg } from '../game/Sprite'
+import { BossSprite, HeroSprite, Icon, SceneAmbient, SceneBg } from '../game/Sprite'
+import { PetMini } from './PetSheet'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Segments, Sheet, Stars, toastError, useGame } from '../game/ui'
@@ -10,7 +11,7 @@ import { online } from './Games'
 import { PartnerSheet } from './PartnerSheet'
 
 export function Adventure() {
-  const { game, setGame, run, go } = useGame()
+  const { game, setGame, run, go, openPets } = useGame()
   const hero = game.hero!
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [heroFx, setHeroFx] = useState('')
@@ -128,7 +129,15 @@ export function Adventure() {
         <div className={`absolute left-[8%] bottom-[10px] ${heroFx}`}>
           <HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={3} pose={allDone ? 'joy' : hero.hp < hero.maxHp * 0.3 ? 'hurt' : undefined} />
         </div>
-        {hero.equipped.pet && <div className="absolute left-[24%] bottom-[14px]"><PetSprite petKey={hero.equipped.pet} scale={1.6} /></div>}
+        {(game.pets ?? []).slice(0, 2).map((p, i) => (
+          <button key={p.id} className="absolute bottom-[10px]" style={{ left: i === 0 ? '24%' : '53%' }} onClick={() => { sfx.open(); openPets() }} aria-label={p.name}>
+            {!p.patMe && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bob"><Icon name="heart" size={14} /></span>}
+            <PetMini pet={p} scale={1.5} />
+          </button>
+        ))}
+        {(game.pets ?? []).length === 0 && game.play.petAdopt && (
+          <button className="absolute left-[24%] bottom-[12px]" onClick={() => { sfx.open(); openPets() }} aria-label="Yeni dost"><Icon name="egg" size={30} className="egg-wobble" /></button>
+        )}
         {partner && (() => {
           const pDone = partner.todayTotal > 0 && partner.todayDone === partner.todayTotal
           const pOn = online(partner.lastSeen, game.serverTime)
@@ -141,7 +150,6 @@ export function Adventure() {
                 <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-edge ${pOn ? 'bg-ok' : 'bg-ink2/40'}`} />
                 {partner.special && <span className="absolute -top-2 -left-2"><Icon name="shield" size={16} /></span>}
               </button>
-              {partner.equipped.pet && <div className="absolute left-[52%] bottom-[12px]"><PetSprite petKey={partner.equipped.pet} scale={1.4} /></div>}
             </>
           )
         })()}

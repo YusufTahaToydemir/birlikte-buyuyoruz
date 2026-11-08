@@ -14,8 +14,9 @@ export const GAME_INFO: Record<DuelGame, { name: string; icon: string; rule: str
   SLIDE: { name: 'Yapboz', icon: 'puzzle', rule: 'Parçaları kaydır, resmi tamamla', color: '#ffcc3a', max: 300 },
   MATH: { name: 'Hızlı Hesap', icon: 'lamp', rule: 'İşlemin sonucunu seç · 30 sn', color: '#ff8a3d', max: 40 },
   COLOR: { name: 'Renk Tuzağı', icon: 'pal', rule: 'Bazen yazıyı, bazen rengi seç · 30 sn', color: '#ff8ab5', max: 40 },
+  SUDOKU: { name: 'Sudoku', icon: 'grid', rule: 'Her satır, sütun ve kutuya 1–9 · hızlı çöz, az hata yap', color: '#7ec8ff', max: 1000 },
 }
-export const DUEL_GAMES: DuelGame[] = ['TAP', 'MEMORY', 'TIMING', 'WORDS', 'MATH', 'COLOR', 'SLIDE']
+export const DUEL_GAMES: DuelGame[] = ['TAP', 'MEMORY', 'TIMING', 'WORDS', 'MATH', 'COLOR', 'SLIDE', 'SUDOKU']
 
 export function mulberry(seed: number) {
   let a = seed >>> 0

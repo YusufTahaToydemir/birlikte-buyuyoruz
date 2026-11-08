@@ -18,7 +18,7 @@ export const CASTLE_CATALOG: Array<{ key: string; name: string; icon: string; co
   { key: 'forge', name: 'Demirci', icon: 'sword', cost: 400, max: 3, bonus: 'Güç görevleri +%1 XP / seviye' },
   { key: 'kitchen', name: 'Mutfak', icon: 'apple', cost: 300, max: 2, bonus: 'Sabah +2 can / seviye' },
   { key: 'market', name: 'Pazar', icon: 'bag', cost: 400, max: 2, bonus: 'Tüm görevler +%1 altın / seviye' },
-  { key: 'stable', name: 'Ahır', icon: 'pet', cost: 350, max: 2 },
+  { key: 'stable', name: 'Ahır', icon: 'pet', cost: 350, max: 2, bonus: 'Yuvada +1 evcil dost yeri / seviye' },
   { key: 'fountain', name: 'Çeşme', icon: 'water', cost: 250, max: 1 },
   { key: 'orchard', name: 'Meyve Bahçesi', icon: 'apple', cost: 350, max: 2 },
   { key: 'windmill', name: 'Yel Değirmeni', icon: 'gear', cost: 450, max: 1 },

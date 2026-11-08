@@ -9,6 +9,8 @@ import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Sheet, toastError, useGame } from '../game/ui'
 import { NotesCard, QuizCard, RaidCard } from './Together'
+import { SudokuDuel } from '../game/SudokuBoard'
+import { SudokuCard } from './Sudoku'
 
 /** Yapboz resmi: manzara + haftanın canavarı (96x96) */
 function puzzleImage(bossKey: string, seed: number) {
@@ -103,6 +105,9 @@ export function Games() {
         </button>
       )}
 
+      {/* Ortak Sudoku (sıra tabanlı) */}
+      {partner && <SudokuCard me={me} partner={partner} />}
+
       {/* Birlikte */}
       {partner && g && (
         <section className="panel p-3 space-y-2">
@@ -157,7 +162,7 @@ export function Games() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           {DUEL_GAMES.map((k, i) => (
-            <button key={k} className={`panel p-2 flex items-center gap-2 text-left relative overflow-hidden ${i === DUEL_GAMES.length - 1 ? 'col-span-2' : ''}`} onClick={() => { sfx.open(); setIntro(k) }}>
+            <button key={k} className={`panel p-2 flex items-center gap-2 text-left relative overflow-hidden ${i === DUEL_GAMES.length - 1 && DUEL_GAMES.length % 2 ? 'col-span-2' : ''}`} onClick={() => { sfx.open(); setIntro(k) }}>
               <span className="absolute left-0 top-0 bottom-0 w-[5px]" style={{ background: GAME_INFO[k].color }} />
               <span className="panel-dark p-1 ml-1"><Icon name={GAME_INFO[k].icon} size={36} /></span>
               <span className="font-pixel text-[16px] leading-tight">{GAME_INFO[k].name}</span>
@@ -311,6 +316,7 @@ function PlayOverlay({ play, me, partner, onClose, onSubmit }: { play: Play; me:
                 : play.game === 'WORDS' ? <WordsGame seed={play.seed} onEnd={s => void end(s)} />
                   : play.game === 'MATH' ? <MathGame seed={play.seed} onEnd={s => void end(s)} />
                     : play.game === 'COLOR' ? <ColorGame seed={play.seed} onEnd={s => void end(s)} />
+                    : play.game === 'SUDOKU' ? <SudokuDuel seed={play.seed} onEnd={s => void end(s)} />
                       : <SlideGame seed={play.seed} image={image} onEnd={s => void end(s)} />
         )}
         {(phase === 'send' || phase === 'result') && (

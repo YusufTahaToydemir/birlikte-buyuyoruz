@@ -1,6 +1,7 @@
 // Oyun sunucusu (Supabase RPC) ile konuşan ince katman. Tüm kurallar sunucuda.
 import { supabase, usernameToEmail } from './supabase'
 import type { Gear, HeroClass, Look } from '../game/art/hero'
+import type { PetSlot, PetSpecies } from '../game/art/pets'
 
 export type Category = 'BODY' | 'MIND' | 'SPIRIT' | 'ORDER'
 export interface Hero {
@@ -40,8 +41,50 @@ export interface Game {
   tickets: { available: number; requested: number; used: number }
   incomingRequests: number
   chains: Record<string, { chain: number; best: number }>
-  play: { duels: number; together: number; word: boolean }
+  play: { duels: number; together: number; word: boolean; sudoku?: boolean; petAdopt?: boolean }
+  pets?: Pet[]
+  petBonus?: number
 }
+/** Ortak evcil dost (çiftin) */
+export interface Pet { id: string; species: PetSpecies; color: string; name: string; love: number; stage: number; outfit: Partial<Record<PetSlot, string>>; createdAt: string; patMe: boolean; patPartner: boolean }
+export interface PetsState {
+  pets: Pet[]; wardrobe: string[]
+  pending: { id: string; species: PetSpecies; color: string; name: string; price: number; half: number; rest: number; startedBy: string; expiresAt: string } | null
+  bonus: number; slots: number; priceMult: number
+  cfg: { species: Record<PetSpecies, { name: string; price: number }>; stages: number[]; bonus: number[]; cap: number; baseSlots: number; maxSlots: number; priceMult: number[]; patLove: number; patBoth: number }
+  log: Array<{ amount: number; reason: string; pet: string | null; at: string }>
+}
+export const getPets = () => rpc<PetsState>('get_pets')
+export const petAdoptStart = (species: PetSpecies, color: string, name: string) => rpc<PetsState>('pet_adopt_start', { p_species: species, p_color: color, p_name: name })
+export const petAdoptConfirm = (id: string) => rpc<PetsState>('pet_adopt_confirm', { p_id: id })
+export const petAdoptCancel = (id: string) => rpc<PetsState>('pet_adopt_cancel', { p_id: id })
+export const petPat = (id: string) => rpc<PetsState>('pet_pat', { p_pet: id })
+export const petBuyItem = (key: string) => rpc<PetsState>('pet_buy_item', { p_key: key })
+export const petDress = (id: string, slot: PetSlot | 'COLOR', value: string | null) => rpc<PetsState>('pet_dress', { p_pet: id, p_slot: slot, p_value: value })
+export const petRename = (id: string, name: string) => rpc<PetsState>('pet_rename', { p_pet: id, p_name: name })
+/** Sevgi kaynaklarının kısa adı ve simgesi */
+export const LOVE_REASON: Record<string, { name: string; icon: string }> = {
+  PAT: { name: 'Sevme', icon: 'heart' }, PAT_BOTH: { name: 'İkiniz sevdiniz', icon: 'heart' }, FULL_DAY: { name: 'Tam gün', icon: 'check' },
+  COMBO: { name: 'Kombo', icon: 'sparkle' }, TOGETHER: { name: 'Birlikte', icon: 'heart' }, WORD: { name: 'Kelime', icon: 'scroll' },
+  NOTE: { name: 'Mektup', icon: 'quill' }, DUEL: { name: 'Düello', icon: 'swords' }, QUIZ: { name: 'Çift testi', icon: 'puzzle' },
+  RAID: { name: 'Baskın', icon: 'skull' }, BOSS: { name: 'Canavar', icon: 'crown' }, SUDOKU: { name: 'Sudoku', icon: 'grid' },
+}
+
+// ---------- Ortak sudoku (sıra tabanlı) ----------
+export interface SudokuGame {
+  id: string; level: number; puzzle: string; board: string; owners: string
+  playerA: string; playerB: string; turn: string | null; movesLeft: number
+  scoreA: number; scoreB: number; missA: number; missB: number
+  status: 'ACTIVE' | 'DONE' | 'CANCELLED'; winner: string | null
+  lastMove: { by: string; cell?: number; digit?: number; ok?: boolean; units?: number; pts?: number; pass?: boolean } | null
+  createdAt: string; finishedAt: string | null
+}
+export interface SudokuState { game: SudokuGame | null; record: { me: number; partner: number; draws: number } }
+export const getSudoku = () => rpc<SudokuState>('get_sudoku')
+export const sudokuStart = (level: number) => rpc<SudokuState>('sudoku_start', { p_level: level })
+export const sudokuMove = (cell: number, digit: number) => rpc<SudokuState>('sudoku_move', { p_cell: cell, p_digit: digit })
+export const sudokuPass = () => rpc<SudokuState>('sudoku_pass')
+export const sudokuCancel = () => rpc<SudokuState>('sudoku_cancel')
 export interface Delta { xp: number; gold: number; damage: number; defeated?: boolean }
 export type TicketTier = 'GREEN' | 'ORANGE' | 'RED'
 export interface Ticket { id: string; week: string | null; status: 'AVAILABLE' | 'REQUESTED' | 'USED' | 'ARCHIVED'; source: string | null; tier: TicketTier; createdAt: string }
@@ -95,6 +138,12 @@ const ERROR_TEXT: Record<string, string> = {
   NOT_ALLOWED: 'Bu özellik bu karakter için kapalı.',
   UNSUPPORTED: 'Bu cihaz bildirimleri desteklemiyor. iPhone’da önce ana ekrana ekle.',
   DENIED: 'Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.',
+  ADOPT_PENDING: 'Önce bekleyen sahiplenme bitsin.',
+  PET_NAME: 'Dostuna 1–16 harflik bir ad ver.',
+  PET_SLOTS: 'Yuvada yer yok. Kalede Ahır yuvayı büyütür.',
+  PET_STAGE_LOCKED: 'Dostunuz biraz daha büyümeli.',
+  NOT_YOUR_TURN: 'Sıra eşinde.',
+  INVALID_VALUE: 'Geçersiz seçim.',
   PUSH_SERVICE: 'Google bildirim servisine ulaşılamadı. Wi‑Fi’ı veya mobil veriyi değiştirip tekrar dene; olmazsa Chrome’u kapatıp aç.',
 }
 export function errorText(e: unknown): string {
@@ -199,7 +248,7 @@ export const deleteAccount = () => rpc<{ ok: boolean }>('delete_account')
 export const disconnectCouple = () => rpc<Game>('disconnect_couple')
 
 // ---------- Oyunlar (düello, Günün Kelimesi, birlikte) ----------
-export type DuelGame = 'TAP' | 'MEMORY' | 'TIMING' | 'WORDS' | 'SLIDE' | 'MATH' | 'COLOR'
+export type DuelGame = 'TAP' | 'MEMORY' | 'TIMING' | 'WORDS' | 'SLIDE' | 'MATH' | 'COLOR' | 'SUDOKU'
 export interface QuizQuestion { id: number; text: string; options: string[]; custom: boolean; me: { self: number; guess: number } | null; partner: { self: number; guess: number } | null }
 export interface Quiz { week: string; questions: QuizQuestion[]; mineDone: boolean; theirsDone: boolean; finished: boolean; matches: number | null; history: Array<{ week: string; matches: number }> }
 export interface Raid { date: string; game: DuelGame; seed: number; scores: Record<string, number>; damage: number | null; finished: boolean }
@@ -281,8 +330,8 @@ export const SPECIAL_EXTRA: Array<{ code: string; name: string; icon: string; de
 export const STAMPS = ['heart', 'flower', 'star', 'sun', 'moon', 'gift', 'sparkle', 'coin']
 
 // ---------- Dükkan kataloğu (sunucudakiyle aynı) ----------
-export type Slot = 'weapon' | 'armor' | 'head' | 'cape' | 'pet'
-export interface ShopItem { key: string; name: string; kind: 'WEAPON' | 'ARMOR' | 'HEAD' | 'CAPE' | 'PET' | 'POTION' | 'CHARM'; tier: number; minLevel: number; price: number; effect: number }
+export type Slot = 'weapon' | 'armor' | 'head' | 'cape'
+export interface ShopItem { key: string; name: string; kind: 'WEAPON' | 'ARMOR' | 'HEAD' | 'CAPE' | 'POTION' | 'CHARM'; tier: number; minLevel: number; price: number; effect: number }
 const I = (key: string, name: string, kind: ShopItem['kind'], tier: number, minLevel: number, price: number, effect = 0): ShopItem => ({ key, name, kind, tier, minLevel, price, effect })
 export const SHOP: ShopItem[] = [
   I('potion_small', 'Can İksiri', 'POTION', 0, 1, 25, 30),
@@ -299,8 +348,6 @@ export const SHOP: ShopItem[] = [
   I('cape_red', 'Kızıl Pelerin', 'CAPE', 0, 3, 80), I('cape_blue', 'Mavi Pelerin', 'CAPE', 0, 3, 80), I('cape_green', 'Orman Pelerini', 'CAPE', 0, 8, 200),
   I('cape_royal', 'Kraliyet Pelerini', 'CAPE', 0, 18, 800), I('cape_shadow', 'Gölge Pelerini', 'CAPE', 0, 34, 2200),
   I('cape_gold', 'Altın Pelerin', 'CAPE', 0, 46, 4000), I('cape_star', 'Yıldızlı Pelerin', 'CAPE', 0, 68, 9000),
-  I('pet_cat', 'Kedi', 'PET', 0, 5, 250), I('pet_fox', 'Tilki', 'PET', 0, 12, 600), I('pet_owl', 'Baykuş', 'PET', 0, 20, 1000),
-  I('pet_bunny', 'Tavşan', 'PET', 0, 28, 1600), I('pet_dragon', 'Yavru Ejder', 'PET', 0, 42, 3500), I('pet_phoenix', 'Anka Kuşu', 'PET', 0, 80, 15000),
 ]
 export const shopItem = (key: string) => SHOP.find(s => s.key === key)
 

@@ -4,16 +4,20 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ACHIEVEMENTS, markEventsSeen, SKILLS, TICKET_TIERS, titleFor, unlocksAt, type DuelGame, type GameEvent, type TicketTier } from '../lib/game'
 import type { HeroClass } from './art/hero'
 import { GAME_INFO } from './minigames'
-import { BossSprite, HeroSprite, Icon, PetSprite } from './Sprite'
+import { BossSprite, HeroSprite, Icon } from './Sprite'
+import { PetView } from './Pet'
+import { PET_SPECIES, STAGES, type PetLook, type PetSpecies } from './art/pets'
 import { fx } from './fx'
 import { sfx } from './sfx'
 import { toast, useGame } from './ui'
 
 /** Pencere açmadan yalnızca kısa bildirim gösterilen olaylar */
-const QUIET = new Set(['WORD_GUESS'])
+const QUIET = new Set(['WORD_GUESS', 'PET_ITEM', 'SUDOKU_TURN'])
+const quietText = (e: GameEvent) => e.kind === 'PET_ITEM' ? `${e.from ?? ''} gardıroba ekledi: ${String(e.data.name ?? '')}`
+  : e.kind === 'SUDOKU_TURN' ? 'Sudoku: sıra sende!' : `${e.from ?? ''} bir kelime tahmin etti`
 
 export function EventOverlay() {
-  const { game, go } = useGame()
+  const { game, go, openPets } = useGame()
   const [queue, setQueue] = useState<GameEvent[]>([])
   const seen = useRef(new Set<string>())
 
@@ -21,7 +25,7 @@ export function EventOverlay() {
     const fresh = game.events.filter(e => !seen.current.has(e.id))
     if (fresh.length === 0) return
     fresh.forEach(e => seen.current.add(e.id))
-    fresh.filter(e => QUIET.has(e.kind)).forEach(e => { sfx.key(); toast(`${e.from ?? ''} bir kelime tahmin etti`) })
+    fresh.filter(e => QUIET.has(e.kind)).forEach(e => { sfx.key(); toast(quietText(e)) })
     setQueue(q => [...q, ...fresh.filter(e => !QUIET.has(e.kind))])
     void markEventsSeen(fresh.map(e => e.id)).catch(() => { /* bir sonraki yüklemede tekrar denenir */ })
   }, [game.events])
@@ -59,6 +63,11 @@ export function EventOverlay() {
       case 'WORD_SOLVED': case 'TOGETHER_DONE': sfx.victory(); fx.confetti(80); break
       case 'WORD_FAILED': sfx.undo(); break
       case 'TOGETHER_REQUEST': sfx.cheer(); fx.sparkle(mid.x, mid.y, 8, '#ff8ab5'); break
+      case 'PET_REFUND': sfx.coin(); fx.sparkle(mid.x, mid.y, 10, '#ffcc3a', 60); break
+      case 'PET_ADOPT_REQUEST': sfx.cheer(); fx.sparkle(mid.x, mid.y, 12, '#ff8ab5', 70); break
+      case 'PET_ADOPTED': case 'PET_STAGE': sfx.levelUp(); fx.confetti(100); fx.ring(mid.x, mid.y, '#ff8ab5'); navigator.vibrate?.([20, 40, 60]); break
+      case 'SUDOKU_START': sfx.roar(); fx.shake(); break
+      case 'SUDOKU_DONE': if (cur.data.result === 'WIN') { sfx.victory(); fx.confetti(80) } else if (cur.data.result === 'LOSE') sfx.hurt(); else sfx.cheer(); break
       default: sfx.click()
     }
   }, [cur])
@@ -68,6 +77,9 @@ export function EventOverlay() {
   const d = cur.data as Record<string, number | string>
   const next = () => { sfx.click(); setQueue(q => q.slice(1)) }
   const goTo = (t: 'games' | 'loot') => { sfx.tab(); setQueue(q => q.slice(1)); go(t) }
+  const toPets = () => { sfx.open(); setQueue(q => q.slice(1)); openPets() }
+  const petLook = (stage = 0): PetLook => ({ species: (d.species as PetSpecies) ?? 'cat', color: String(d.color ?? 'c0'), stage, outfit: (cur.data.outfit as PetLook['outfit']) ?? {} })
+  const spName = PET_SPECIES[(d.species as PetSpecies) ?? 'cat']?.name ?? 'dost'
 
   let art: ReactNode = null, title: ReactNode = null, sub: ReactNode = null, color = '#ffcc3a', rays = true
   let action: ReactNode = null
@@ -94,7 +106,7 @@ export function EventOverlay() {
           </span>
           {unlocks.length > 0 && (
             <span className="flex items-center gap-2 text-ink2 text-[16px]"><Icon name="lock" size={16} className="grayscale" />→
-              {unlocks.map(u => u.kind === 'PET' ? <PetSprite key={u.key} petKey={u.key} scale={1.6} className="!animate-none" /> : <HeroSprite key={u.key} cls={h.class} look={h.look} gear={{ ...h.equipped, ...(u.kind === 'WEAPON' ? { weapon: u.tier } : u.kind === 'ARMOR' ? { armor: u.tier } : u.kind === 'HEAD' ? { head: u.key } : u.kind === 'CAPE' ? { cape: u.key } : {}) }} scale={1.1} animate={false} />)}
+              {unlocks.map(u => <HeroSprite key={u.key} cls={h.class} look={h.look} gear={{ ...h.equipped, ...(u.kind === 'WEAPON' ? { weapon: u.tier } : u.kind === 'ARMOR' ? { armor: u.tier } : u.kind === 'HEAD' ? { head: u.key } : u.kind === 'CAPE' ? { cape: u.key } : {}) }} scale={1.1} animate={false} />)}
             </span>
           )}
         </span>
@@ -298,6 +310,44 @@ export function EventOverlay() {
       title = 'SEZON BİTTİ'; color = '#b98aff'
       sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Özetin Kahraman sekmesinde</span>{reward(undefined, d.gold)}</span>
       break
+    case 'PET_REFUND':
+      art = <div className="flex items-end gap-2"><Icon name="coin" size={70} className="glow" /><Icon name="egg" size={56} className="egg-wobble" /></div>
+      title = 'İADE'; color = '#ffcc3a'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Evcil dostlar artık ortak! {String(d.name)} için ödediğin altın geri geldi</span>{reward(undefined, d.gold)}</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="pet" size={20} />Yuva</button>
+      break
+    case 'PET_ADOPT_REQUEST':
+      art = <div className="flex items-end gap-2"><Icon name="egg" size={72} className="egg-wobble" /><PetView look={petLook(0)} scale={4} /></div>
+      title = 'YENİ DOST?'; color = '#ff8ab5'
+      sub = <span className="text-ink">{cur.from}: “{String(d.name)}” adlı {spName.toLocaleLowerCase('tr-TR')} birlikte sahiplenelim mi? Senin payın <Icon name="coin" size={16} />{String(d.rest)}</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="heart" size={20} />Bak</button>
+      break
+    case 'PET_ADOPTED':
+      art = <span className="popin"><PetView look={petLook(0)} scale={6} /></span>
+      title = 'HOŞ GELDİN!'; color = '#ff8ab5'
+      sub = <span className="text-ink">{cur.from} onayladı · {String(d.name)} artık yuvanızda</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="pet" size={20} />Yuva</button>
+      break
+    case 'PET_STAGE': {
+      const stg = Number(d.stage ?? 1)
+      art = <span className="popin"><PetView look={petLook(stg)} scale={6} /></span>
+      title = `${(STAGES[stg] ?? '').toLocaleUpperCase('tr-TR')}!`; color = '#ff8ab5'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{String(d.name)} büyüdü</span><span className="text-gold flex items-center gap-1"><Icon name="star" size={16} /><Icon name="sword" size={16} />Dost gücü +%{String(d.bonus ?? '')} · yarından</span></span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="pet" size={20} />Yuva</button>
+      break
+    }
+    case 'SUDOKU_START':
+      art = <Icon name="grid" size={100} className="glow bob" />; title = 'SUDOKU!'; color = '#7ec8ff'; rays = false
+      sub = <span className="text-ink">{cur.from} ortak sudoku başlattı · sırayla aynı tahtada</span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={() => goTo('games')}><Icon name="grid" size={20} />Oyna</button>
+      break
+    case 'SUDOKU_DONE': {
+      const r = String(d.result)
+      art = <div className="flex items-end gap-3"><div className={r === 'WIN' ? 'jump' : ''}><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={2.4} pose={r === 'WIN' ? 'joy' : r === 'LOSE' ? 'hurt' : undefined} /></div><Icon name="grid" size={48} className="mb-6" /></div>
+      title = r === 'WIN' ? 'KAZANDIN!' : r === 'LOSE' ? 'Kaybettin' : 'Berabere'; color = r === 'WIN' ? '#ffcc3a' : r === 'LOSE' ? '#ff4d6d' : '#4cc9f0'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Sudoku bitti · {String(d.me)} – {String(d.them)}</span>{reward(r === 'WIN' ? 30 : r === 'LOSE' ? 15 : 20, r === 'WIN' ? 40 : r === 'LOSE' ? 20 : 30)}</span>
+      break
+    }
     default:
       art = <Icon name="sparkle" size={90} />; title = cur.kind
   }

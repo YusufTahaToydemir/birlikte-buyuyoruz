@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { buyItem, getTickets, requestTicket, respondRedemption, SHOP, TICKET_TIERS, type Redemption, type ShopItem, type Ticket, type TicketTier } from '../lib/game'
 import type { Gear } from '../game/art/hero'
-import { BossSprite, HeroSprite, Icon, PetSprite, Portrait } from '../game/Sprite'
+import { BossSprite, HeroSprite, Icon, Portrait } from '../game/Sprite'
+import { PetMini } from './PetSheet'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Sheet, toastError, useGame } from '../game/ui'
@@ -23,7 +24,6 @@ export function TicketArt({ tier, size = 40, className = '' }: { tier: TicketTie
 }
 
 function ItemArt({ item, size = 40 }: { item: ShopItem; size?: number }) {
-  if (item.kind === 'PET') return <PetSprite petKey={item.key} scale={size / 16} className="!animate-none" />
   if (item.kind === 'CHARM') return (
     <span className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
       <Icon name="shield" size={size} /><Icon name="flame" size={Math.round(size * 0.45)} className="absolute" />
@@ -54,9 +54,10 @@ export function Treasure() {
 }
 
 function Shop() {
-  const { game, run } = useGame()
+  const { game, run, openPets } = useGame()
   const h = game.hero!
   const [sel, setSel] = useState<ShopItem | null>(null)
+  const pets = game.pets ?? []
   const stackable = (i: ShopItem) => i.kind === 'POTION' || i.kind === 'CHARM'
   const isOwned = (i: ShopItem) => !stackable(i) && (game.inventory[i.key] ?? 0) > 0
   const full = (i: ShopItem) => i.kind === 'CHARM' && (game.inventory[i.key] ?? 0) >= 2
@@ -76,11 +77,23 @@ function Shop() {
     { kinds: ['POTION', 'CHARM'], icon: 'potion' },
     { kinds: ['WEAPON', 'ARMOR'], icon: 'swords' },
     { kinds: ['HEAD', 'CAPE'], icon: 'crown' },
-    { kinds: ['PET'], icon: 'pet' },
   ]
 
   return (
     <>
+      {/* Ortak evcil dostlar */}
+      <button className="panel w-full p-3 flex items-center gap-3 text-left relative overflow-hidden" onClick={() => { sfx.open(); openPets() }}>
+        <div className="absolute inset-[-60%] rays opacity-15 pointer-events-none" />
+        <div className="relative flex items-end -space-x-2 min-w-[64px] justify-center">
+          {pets.length ? pets.slice(0, 3).map(p => <PetMini key={p.id} pet={p} scale={1.8} />) : <Icon name="egg" size={52} className="egg-wobble" />}
+        </div>
+        <div className="relative flex-1 min-w-0">
+          <div className="font-pixel text-xl">Yuva</div>
+          <div className="font-pixel text-[15px] text-ink2">{pets.length ? `${pets.length} dost · giydir, sev, büyüt` : 'Birlikte bir dost sahiplenin'}</div>
+        </div>
+        {(game.petBonus ?? 0) > 0 && <span className="relative font-pixel text-[15px] text-gold flex items-center gap-0.5"><Icon name="sword" size={15} />+%{game.petBonus}</span>}
+        {game.play.petAdopt && <span className="relative w-3 h-3 rounded-full bg-hp border-2 border-edge blinkdot" />}
+      </button>
       {groups.map(gr => (
         <section key={gr.icon} className="space-y-2">
           <div className="grid grid-cols-3 gap-2">
@@ -119,8 +132,6 @@ function Shop() {
                   <div className="relative flex flex-col items-center gap-2"><ItemArt item={sel} size={96} />
                     <span className="font-pixel text-[16px] text-xp text-center leading-tight flex items-center gap-1">Eksik günde <Icon name="flame" size={18} />serin korunur</span>
                     <span className="font-pixel text-[14px] text-ink2">Kendiliğinden kullanılır · en fazla 2</span></div>
-                ) : sel.kind === 'PET' ? (
-                  <><div className="relative"><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={3} /></div><div className="relative"><PetSprite petKey={sel.key} scale={4} /></div></>
                 ) : <div className="relative"><HeroSprite cls={h.class} look={h.look} gear={gear} scale={4} pose="joy" /></div>}
               </div>
               {own ? (

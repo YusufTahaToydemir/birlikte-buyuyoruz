@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gridToURL } from './pixel'
 import { HERO_H, HERO_W, renderHero, renderPortrait, type Gear, type HeroClass, type Look, type Pose } from './art/hero'
-import { BOSS_SIZE, PET_SIZE, renderBoss, renderPet } from './art/bosses'
+import { BOSS_SIZE, renderBoss } from './art/bosses'
 import { renderIcon } from './art/icons'
 import { drawScene, timeOfDay } from './art/scene'
 
@@ -41,14 +41,6 @@ export function Portrait({ cls, look, gear, size = 48 }: { cls: HeroClass; look:
 export function BossSprite({ bossKey, scale = 3, className = '', label }: { bossKey: string; scale?: number; className?: string; label?: string }) {
   const src = gridToURL(`boss:${bossKey}`, () => renderBoss(bossKey))
   return <img src={src} width={BOSS_SIZE * scale} height={BOSS_SIZE * scale} alt={label ?? 'Canavar'} className={`px ${className}`} draggable={false} />
-}
-
-export function PetSprite({ petKey, scale = 3, className = '' }: { petKey?: string; scale?: number; className?: string }) {
-  if (!petKey) return null
-  const g = renderPet(petKey)
-  if (!g) return null
-  const src = gridToURL(`pet:${petKey}`, () => g)
-  return <img src={src} width={PET_SIZE * scale} height={PET_SIZE * scale} alt="" className={`px pet-hop ${className}`} draggable={false} />
 }
 
 export function SceneBg({ className = '', seed = 7 }: { className?: string; seed?: number }) {

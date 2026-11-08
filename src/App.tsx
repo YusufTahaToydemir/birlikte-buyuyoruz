@@ -13,6 +13,7 @@ import { Games } from './screens/Games'
 import { music } from './game/music'
 import { titleFor } from './lib/game'
 import { SettingsSheet } from './screens/SettingsSheet'
+import { PetSheet } from './screens/PetSheet'
 import { EventOverlay } from './game/Events'
 import { FxLayer } from './game/fx'
 import { Icon, Portrait } from './game/Sprite'
@@ -67,6 +68,7 @@ function GameRoot() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>('quest')
   const [settings, setSettings] = useState(false)
+  const [pets, setPets] = useState(false)
   const busy = useRef(0)
 
   const setGame = useCallback((g: Game) => setGameState(g), [])
@@ -95,7 +97,7 @@ function GameRoot() {
   useEffect(() => { music.play(!game?.hero ? 'title' : tab === 'arena' ? 'battle' : tab === 'games' ? 'arcade' : 'town') }, [tab, game?.hero])
 
   const go = useCallback((t: TabId) => { sfx.tab(); setTab(t); window.scrollTo({ top: 0 }) }, [])
-  const ctx = useMemo<GameCtx | null>(() => game ? { game, setGame, refresh, run, go, openSettings: () => setSettings(true) } : null, [game, setGame, refresh, run, go])
+  const ctx = useMemo<GameCtx | null>(() => game ? { game, setGame, refresh, run, go, openSettings: () => setSettings(true), openPets: () => setPets(true) } : null, [game, setGame, refresh, run, go])
 
   if (!game || !ctx) return loadError ? (
     <div className="p-6 text-center space-y-4 pt-24">
@@ -111,7 +113,8 @@ function GameRoot() {
   const badge: Partial<Record<TabId, boolean>> = {
     loot: game.incomingRequests > 0,
     arena: game.couple.hasPartner && game.cheersLeft > 0,
-    games: game.play.duels > 0 || game.play.together > 0 || game.play.word,
+    games: game.play.duels > 0 || game.play.together > 0 || game.play.word || !!game.play.sudoku,
+    quest: !!game.play.petAdopt,
   }
 
   return (
@@ -146,6 +149,7 @@ function GameRoot() {
       </nav>
       <EventOverlay />
       <SettingsSheet open={settings} onClose={() => setSettings(false)} />
+      {pets && <PetSheet onClose={() => setPets(false)} />}
     </GameContext.Provider>
   )
 }

@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { ACHIEVEMENTS, CAT_INFO, equipItem, levelReward, SHOP, STAT_EFFECT, statBonus, titleFor, TITLES, unlocksAt, type Category, type Hero, type Slot } from '../lib/game'
 import { CLASS_INFO, type Gear } from '../game/art/hero'
-import { HeroSprite, Icon, PetSprite } from '../game/Sprite'
+import { HeroSprite, Icon } from '../game/Sprite'
+import { PetMini } from './PetSheet'
 import { fx } from '../game/fx'
 import { sfx } from '../game/sfx'
 import { Bar, Sheet, useGame } from '../game/ui'
@@ -14,12 +15,12 @@ const SLOTS: Array<{ slot: Slot; icon: string; kind: string }> = [
   { slot: 'armor', icon: 'shield', kind: 'ARMOR' },
   { slot: 'head', icon: 'helmet', kind: 'HEAD' },
   { slot: 'cape', icon: 'cape', kind: 'CAPE' },
-  { slot: 'pet', icon: 'pet', kind: 'PET' },
 ]
 const CATS: Category[] = ['BODY', 'MIND', 'SPIRIT', 'ORDER']
 
 export function HeroScreen() {
-  const { game, run } = useGame()
+  const { game, run, openPets } = useGame()
+  const pet = game.pets?.[0]
   const h = game.hero!
   const [slot, setSlot] = useState<Slot | null>(null)
   const [pose, setPose] = useState<'joy' | undefined>()
@@ -56,7 +57,7 @@ export function HeroScreen() {
             <HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={5} pose={pose} />
             <div className="absolute bottom-[6px] left-1/2 -translate-x-1/2 w-[130px] h-[14px] rounded-[50%] bg-black/35 -z-10" />
           </button>
-          {h.equipped.pet && <div className="absolute right-6 bottom-6"><PetSprite petKey={h.equipped.pet} scale={3} /></div>}
+          {pet && <button className="absolute right-5 bottom-5" onClick={() => { sfx.open(); openPets() }} aria-label={pet.name}><PetMini pet={pet} scale={2.6} /></button>}
           <div className="flex gap-2 mt-1">
             <span className="panel-dark px-2 py-1 font-pixel flex items-center gap-1"><Icon name="flame" size={18} />{h.streak}</span>
             <span className="panel-dark px-2 py-1 font-pixel flex items-center gap-1 text-gold"><Icon name="trophy" size={18} />{h.bestStreak}</span>
@@ -76,11 +77,15 @@ export function HeroScreen() {
           const eq = s.slot === 'weapon' || s.slot === 'armor' ? tier(s.slot) > 0 : !!h.equipped[s.slot]
           return (
             <button key={s.slot} className={`panel aspect-square grid place-items-center relative ${eq ? '!bg-panel2' : ''}`} onClick={() => { sfx.click(); setSlot(s.slot) }} aria-label={s.slot}>
-              {s.slot === 'pet' && h.equipped.pet ? <PetSprite petKey={h.equipped.pet} scale={2.4} className="!animate-none" /> : <Icon name={s.icon} size={36} className={eq ? '' : 'opacity-35'} />}
+              <Icon name={s.icon} size={36} className={eq ? '' : 'opacity-35'} />
               {(s.slot === 'weapon' || s.slot === 'armor') && tier(s.slot) > 0 && <span className="absolute bottom-0.5 right-1 font-pixel text-[14px] text-gold">+{tier(s.slot)}</span>}
             </button>
           )
         })}
+        <button className={`panel aspect-square grid place-items-center relative ${pet ? '!bg-panel2' : ''}`} onClick={() => { sfx.open(); openPets() }} aria-label="Yuva">
+          {pet ? <PetMini pet={pet} scale={1.7} /> : <Icon name="pet" size={36} className="opacity-35" />}
+          {(game.petBonus ?? 0) > 0 && <span className="absolute bottom-0.5 right-1 font-pixel text-[13px] text-gold">+%{game.petBonus}</span>}
+        </button>
       </section>
 
       {/* Güç değerleri */}
@@ -131,8 +136,7 @@ export function HeroScreen() {
         <div className="grid grid-cols-3 gap-2">
           {options.map(o => (
             <button key={o.key} className={`panel p-1 flex flex-col items-center ${o.active ? '!border-gold' : ''}`} onClick={() => !o.active && void equip(slot, o.value)}>
-              {slot === 'pet' ? (o.value ? <PetSprite petKey={String(o.value)} scale={3} /> : <Icon name="pet" size={48} className="opacity-30" />)
-                : <HeroSprite cls={h.class} look={h.look} gear={o.gear} scale={2} animate={false} />}
+              <HeroSprite cls={h.class} look={h.look} gear={o.gear} scale={2} animate={false} />
               <span className="font-pixel text-[14px] text-center leading-tight mt-1">{o.label}</span>
               {o.active && <Icon name="check" size={18} />}
             </button>
@@ -168,7 +172,7 @@ function LevelRoad({ h }: { h: Hero }) {
               {i === 0 && <div className="absolute left-0 bottom-0 h-[4px] bg-xp" style={{ width: `${pct * 100}%` }} />}
               <span className="font-pixel text-[15px] text-magic">Sv {l}</span>
               <div className="h-[44px] grid place-items-center">
-                {u.length > 0 ? (u[0].kind === 'PET' ? <PetSprite petKey={u[0].key} scale={2.4} className="!animate-none" /> : <HeroSprite cls={h.class} look={h.look} gear={{ ...h.equipped, ...(u[0].kind === 'WEAPON' ? { weapon: u[0].tier } : u[0].kind === 'ARMOR' ? { armor: u[0].tier } : u[0].kind === 'HEAD' ? { head: u[0].key } : u[0].kind === 'CAPE' ? { cape: u[0].key } : {}) }} scale={1} animate={false} />)
+                {u.length > 0 ? (<HeroSprite cls={h.class} look={h.look} gear={{ ...h.equipped, ...(u[0].kind === 'WEAPON' ? { weapon: u[0].tier } : u[0].kind === 'ARMOR' ? { armor: u[0].tier } : u[0].kind === 'HEAD' ? { head: u[0].key } : u[0].kind === 'CAPE' ? { cape: u[0].key } : {}) }} scale={1} animate={false} />)
                   : big ? <Icon name="chest" size={40} className={i < 5 ? 'glow' : ''} /> : <Icon name="coin" size={30} />}
               </div>
               <span className="font-pixel text-[15px] text-gold flex items-center gap-0.5"><Icon name="coin" size={14} />{r.gold}</span>

@@ -929,6 +929,38 @@ const ICONS: Record<string, IconDef> = {
       '............',
     ],
   },
+  grid: {
+    pal: { W: '#f2eee6', B: '#4c6af0', K: '#5a4a88', R: '#ff6a8a' }, lines: [
+      'KKKKKKKKKKKK',
+      'KWBWKWWWKWRK',
+      'KWWWKBWWKWWK',
+      'KWWRKWWWKBWK',
+      'KKKKKKKKKKKK',
+      'KWWWKWRWKWWK',
+      'KBWWKWWWKWWK',
+      'KWWWKWWBKWRK',
+      'KKKKKKKKKKKK',
+      'KWRWKWWWKBWK',
+      'KWWWKBWWKWWK',
+      'KKKKKKKKKKKK',
+    ],
+  },
+  egg: {
+    pal: { W: '#fff4e0', w: '#e8d8b8', P: '#ff9ac8', B: '#9ad8ff' }, lines: [
+      '............',
+      '.....WW.....',
+      '....WWWW....',
+      '...WWPWWW...',
+      '...WWWWBW...',
+      '..WWBWWWWW..',
+      '..WWWWWPWW..',
+      '..WPWWWWWW..',
+      '..WWWWBWWw..',
+      '...WWWWWw...',
+      '....wwww....',
+      '............',
+    ],
+  },
 }
 
 export type IconName = keyof typeof ICONS
