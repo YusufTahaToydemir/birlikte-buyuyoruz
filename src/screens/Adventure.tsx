@@ -130,13 +130,13 @@ export function Adventure() {
           <HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={3} pose={allDone ? 'joy' : hero.hp < hero.maxHp * 0.3 ? 'hurt' : undefined} />
         </div>
         {(game.pets ?? []).slice(0, 2).map((p, i) => (
-          <button key={p.id} className="absolute bottom-[10px]" style={{ left: i === 0 ? '24%' : '53%' }} onClick={() => { sfx.open(); openPets() }} aria-label={p.name}>
+          <button key={p.id} className="absolute z-10" style={{ left: i === 0 ? '55%' : '45%', bottom: i === 0 ? 8 : 2 }} onClick={() => { sfx.open(); openPets() }} aria-label={p.name}>
             {!p.patMe && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bob"><Icon name="heart" size={14} /></span>}
-            <PetMini pet={p} scale={1.5} />
+            <PetMini pet={p} scale={2.1} />
           </button>
         ))}
         {(game.pets ?? []).length === 0 && game.play.petAdopt && (
-          <button className="absolute left-[24%] bottom-[12px]" onClick={() => { sfx.open(); openPets() }} aria-label="Yeni dost"><Icon name="egg" size={30} className="egg-wobble" /></button>
+          <button className="absolute z-10 left-[56%] bottom-[12px]" onClick={() => { sfx.open(); openPets() }} aria-label="Yeni dost"><Icon name="egg" size={34} className="egg-wobble" /></button>
         )}
         {partner && (() => {
           const pDone = partner.todayTotal > 0 && partner.todayDone === partner.todayTotal

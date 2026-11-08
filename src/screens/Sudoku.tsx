@@ -161,7 +161,7 @@ function SudokuCoop({ initial, me, partner, onClose }: { initial: SudokuState; m
 
   const done = g.status !== 'ACTIVE'
   return (
-    <div className="fixed inset-0 z-[52] bg-bg overflow-y-auto" role="dialog" aria-modal="true" aria-label="Ortak Sudoku">
+    <div className="fixed inset-0 z-[45] bg-bg overflow-y-auto" role="dialog" aria-modal="true" aria-label="Ortak Sudoku">
       <div className="mx-auto max-w-[520px] min-h-dvh px-3 pt-[calc(10px+env(safe-area-inset-top))] pb-6 space-y-2.5">
         <div className="flex items-center gap-2">
           <Icon name="grid" size={30} />

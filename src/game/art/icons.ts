@@ -961,6 +961,22 @@ const ICONS: Record<string, IconDef> = {
       '............',
     ],
   },
+  pal: {
+    pal: { W: '#e8c89a', w: '#b08a5a', R: '#ff4d6d', B: '#4c9df0', G: '#5bd17c', Y: '#ffcc3a' }, lines: [
+      '............',
+      '...WWWWW....',
+      '..WWRWWBW...',
+      '.WWWWWWWWW..',
+      '.WYWWWWWWW..',
+      '.WWWW..WWW..',
+      '.WGWW..WWw..',
+      '.WWWWWWWw...',
+      '..WWWWWWw...',
+      '...wwwww....',
+      '............',
+      '............',
+    ],
+  },
 }
 
 export type IconName = keyof typeof ICONS

@@ -33,7 +33,7 @@ export function PetSheet({ onClose }: { onClose: () => void }) {
   const showNew = sel === 'new' || !pet
 
   return (
-    <div className="fixed inset-0 z-[52] bg-bg overflow-y-auto" role="dialog" aria-modal="true" aria-label="Yuva">
+    <div className="fixed inset-0 z-[45] bg-bg overflow-y-auto" role="dialog" aria-modal="true" aria-label="Yuva">
       <div className="mx-auto max-w-[520px] min-h-dvh px-3 pt-[calc(10px+env(safe-area-inset-top))] pb-8 space-y-3">
         <div className="flex items-center gap-2">
           <Icon name="pet" size={30} />
