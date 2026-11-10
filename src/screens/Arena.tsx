@@ -97,6 +97,10 @@ export function Arena() {
         <>
           {/* Yarış */}
           <section className="panel p-3" aria-label="Haftalık yarış">
+            <div className="flex items-center justify-between font-pixel text-[15px] text-ink2 -mt-0.5 mb-1">
+              <span className="flex items-center gap-1"><Icon name="crown" size={16} />Bu hafta</span>
+              <span className="flex items-center gap-1" title="Pazartesi sıfırlanır"><Icon name="moon" size={14} />{daysLeft > 0 ? `${daysLeft} gün` : 'bugün biter'}</span>
+            </div>
             <div className="grid grid-cols-[1fr_auto_1fr] items-end">
               <Fighter name={me.name} hero={me} xp={myXp} crown={leader === 'me'} color="#b98aff" />
               <div className="font-pixel text-3xl text-hp pb-16 px-1 drop-shadow-[0_3px_0_#000]">VS</div>
