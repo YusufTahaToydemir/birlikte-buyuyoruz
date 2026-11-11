@@ -7,6 +7,8 @@ import { App } from './App'
 // Sanat önizlemesi yalnızca geliştirmede: #/art
 const ArtPreview = lazy(() => import('./screens/ArtPreview').then(m => ({ default: m.ArtPreview })))
 const showArt = import.meta.env.DEV && window.location.hash === '#/art'
+const DemoPreview = lazy(() => import('./screens/DemoPreview').then(m => ({ default: m.DemoPreview })))
+const showDemo = import.meta.env.DEV && window.location.hash.startsWith('#/demo')
 
 /** Beklenmeyen bir çizim hatasında beyaz ekran yerine yeniden deneme */
 class Guard extends Component<{ children: ReactNode }, { error: boolean }> {
@@ -28,6 +30,6 @@ class Guard extends Component<{ children: ReactNode }, { error: boolean }> {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Guard>{showArt ? <Suspense><ArtPreview /></Suspense> : <App />}</Guard>
+    <Guard>{showArt ? <Suspense><ArtPreview /></Suspense> : showDemo ? <Suspense><DemoPreview /></Suspense> : <App />}</Guard>
   </StrictMode>,
 )

@@ -104,7 +104,7 @@ export function GardenSheet({ onClose }: { onClose: () => void }) {
     sfx.heal(); setRain(k => k + 1); navigator.vibrate?.(20)
     const up = r.plots.filter(p => p.grewToday && !prev?.plots.find(q => q.slot === p.slot)?.grewToday).map(p => p.slot)
     if (up.length) { window.setTimeout(() => { sfx.levelUp(); setGrown(up) }, 700); window.setTimeout(() => setGrown([]), 2200) }
-    else if (partner && r.plots.length) toast(`Sıra ${partner.name}'de · ikiniz sulayınca büyür`)
+    else if (partner && r.plots.length) toast('Şimdi sıra eşinde · ikiniz sulayınca büyür')
   })
 
   const plotsBySlot = new Map((st?.plots ?? []).map(p => [p.slot, p]))
@@ -121,7 +121,7 @@ export function GardenSheet({ onClose }: { onClose: () => void }) {
           <>
             <Tip id="garden-v4" icon="can" text="İkiniz de sulayınca bitkiler büyür; tek kişi yetmez." />
             {/* tarhlar */}
-            <section className="panel relative overflow-hidden p-3 pt-8" style={{ background: 'linear-gradient(#7cc0ff 0%, #a3d6ff 34%, #6cc24a 35%, #5aae5a 100%)' }}>
+            <section className="panel relative overflow-hidden p-3 pt-11" style={{ background: 'linear-gradient(#7cc0ff 0%, #a3d6ff 34%, #6cc24a 35%, #5aae5a 100%)' }}>
               <div className="absolute top-2 left-2 right-2 flex justify-between font-pixel text-[14px]">
                 <span className="panel-dark px-2 py-0.5 flex items-center gap-1"><Icon name="can" size={14} className={st.waterMe ? '' : 'opacity-30 grayscale'} />sen</span>
                 {partner && <span className="panel-dark px-2 py-0.5 flex items-center gap-1"><Icon name="can" size={14} className={st.waterPartner ? '' : 'opacity-30 grayscale'} />{partner.name}</span>}

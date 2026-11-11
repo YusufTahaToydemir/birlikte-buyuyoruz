@@ -155,7 +155,11 @@ export function Adventure() {
             <PetMini pet={p} scale={2.1} />
           </button>
         ))}
-        {mail.length > 0 && <MailDelivery mail={mail[0]} count={mail.length} pets={game.pets ?? []} partnerName={partner?.name ?? ''} onSeen={() => setGame({ ...game, petMail: mail.slice(1) })} />}
+        {mail.length > 0 && (() => {
+          const shown = homePets.slice(0, 2)
+          const idx = Math.max(0, shown.findIndex(p => p.id === mail[0].pet))
+          return <MailDelivery mail={mail[0]} count={mail.length} pets={game.pets ?? []} slot={shown.length ? idx : -1} partnerName={partner?.name ?? ''} onSeen={() => setGame({ ...game, petMail: mail.slice(1) })} />
+        })()}
         {(game.pets ?? []).length === 0 && game.play.petAdopt && (
           <button className="absolute z-10 left-[56%] bottom-[12px]" onClick={() => { sfx.open(); openPets() }} aria-label="Yeni dost"><Icon name="egg" size={34} className="egg-wobble" /></button>
         )}
@@ -307,7 +311,7 @@ function ForkCard({ fork, partnerName, onVote }: { fork: Fork; partnerName: stri
 }
 
 /** Elçi: eşin gönderdiği dost sahneye yürüyerek gelir, zarfı bırakır */
-function MailDelivery({ mail, count, pets, partnerName, onSeen }: { mail: PetMail; count: number; pets: Pet[]; partnerName: string; onSeen: () => void }) {
+function MailDelivery({ mail, count, pets, slot, partnerName, onSeen }: { mail: PetMail; count: number; pets: Pet[]; slot: number; partnerName: string; onSeen: () => void }) {
   const pet = pets.find(p => p.id === mail.pet) ?? pets[0]
   const [open, setOpen] = useState(false)
   const read = () => {
@@ -316,9 +320,10 @@ function MailDelivery({ mail, count, pets, partnerName, onSeen }: { mail: PetMai
   }
   return (
     <>
-      <button key={mail.id} className="absolute right-[24%] bottom-[6px] z-20 walkin" onClick={() => { sfx.open(); setOpen(true); if (mail.kind === 'HEART') { fx.confetti(30); navigator.vibrate?.([20, 30, 20]) } }} aria-label={`${partnerName}'den mektup`}>
-        <span className="absolute -top-6 left-1/2 -translate-x-1/2 envelope flex items-center"><Icon name={mail.kind === 'HEART' ? 'heart' : 'scroll'} size={20} />{count > 1 && <span className="font-pixel text-[12px] text-gold">×{count}</span>}</span>
-        {pet ? <PetView look={petLook(pet)} scale={2.1} reaction="happy" reactionKey={1} /> : <Icon name="scroll" size={30} />}
+      {/* zarf, dostun kendi yerinde: dosta dokununca mektup açılır (dost yoksa ortada zarf) */}
+      <button key={mail.id} className="absolute z-30 w-[56px] h-[76px] flex justify-center" style={slot < 0 ? { left: '50%', bottom: 8 } : { left: slot === 0 ? '55%' : '45%', bottom: slot === 0 ? 8 : 2 }}
+        onClick={() => { sfx.open(); setOpen(true); if (mail.kind === 'HEART') { fx.confetti(30); navigator.vibrate?.([20, 30, 20]) } }} aria-label={`Mektup: ${partnerName}`}>
+        <span className="absolute top-0 envelope flex items-center panel-dark !p-0.5"><Icon name={mail.kind === 'HEART' ? 'heart' : 'scroll'} size={18} />{count > 1 && <span className="font-pixel text-[12px] text-gold">×{count}</span>}</span>
       </button>
       {open && (
         <div className="fixed inset-0 z-[55] bg-black/70 flex items-center justify-center p-6" role="dialog" aria-modal="true" onClick={read}>
@@ -327,7 +332,7 @@ function MailDelivery({ mail, count, pets, partnerName, onSeen }: { mail: PetMai
               {pet && <PetView look={petLook(pet)} scale={3.6} reaction="pat" reactionKey={1} />}
               <Icon name={mail.kind === 'HEART' ? 'heart' : 'scroll'} size={56} className="glow bob" />
             </div>
-            <div className="font-pixel text-[15px] text-ink2">{pet?.name ?? 'Dostunuz'}, {partnerName}'den getirdi</div>
+            <div className="font-pixel text-[15px] text-ink2">{pet?.name ?? 'Dostunuz'} getirdi · gönderen {partnerName}</div>
             {mail.kind === 'NOTE' ? <p className="font-pixel text-2xl leading-snug">“{mail.text}”</p> : <p className="font-pixel text-3xl text-[#ff8ab5]">♥ ♥ ♥</p>}
             <button className="pbtn pbtn-gold w-full" onClick={read} autoFocus>{count > 1 ? `Sonraki (${count - 1})` : 'Teşekkürler!'}</button>
           </div>

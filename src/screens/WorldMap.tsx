@@ -68,8 +68,8 @@ export function WorldMap({ onClose }: { onClose: () => void }) {
                         : <span className={`block w-4 h-4 rounded-full border-[3px] border-edge ${here ? 'bg-gold blinkdot' : 'bg-[#e8c89a]'}`} />}
                       {here && (
                         <span className="absolute left-1/2 -top-12 map-mark flex gap-0.5">
-                          <Portrait cls={me.class} look={me.look} gear={me.equipped} size={28} />
-                          {partner && <Portrait cls={partner.class} look={partner.look} gear={partner.equipped} size={28} />}
+                          <span className="panel-dark !p-0.5"><Portrait cls={me.class} look={me.look} gear={me.equipped} size={30} /></span>
+                          {partner && <span className="panel-dark !p-0.5"><Portrait cls={partner.class} look={partner.look} gear={partner.equipped} size={30} /></span>}
                         </span>
                       )}
                     </div>

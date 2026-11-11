@@ -191,7 +191,7 @@ function Memories({ mem, setMem }: { mem: MemoriesState | null; setMem: (m: Memo
       {/* açılmış kapsüller */}
       {mem.capsules.filter(c => c.open && c.text).map(c => (
         <div key={c.id} className="panel p-3 space-y-1 !border-gold">
-          <div className="font-pixel text-[14px] text-ink2 flex items-center gap-1"><Icon name="scroll" size={14} />{c.author === me.id ? 'Senin' : `${partner?.name ?? ''}'in`} mektubun · {fmtDate(c.createdAt)}</div>
+          <div className="font-pixel text-[14px] text-ink2 flex items-center gap-1"><Icon name="scroll" size={14} />{c.author === me.id ? 'Sen yazmıştın' : `${partner?.name ?? ''} yazmıştı`} · {fmtDate(c.createdAt)}</div>
           <p className="font-pixel text-lg leading-snug whitespace-pre-wrap">{c.text}</p>
         </div>
       ))}

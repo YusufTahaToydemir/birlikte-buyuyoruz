@@ -317,11 +317,11 @@ function ExploreSheet({ open, onClose, pet, region, busy, onGo }: { open: boolea
 }
 
 /** Elçi: dost eşine kalp ya da kısa not götürür */
-function LetterSheet({ open, onClose, pet, partnerName, busy, onSend }: { open: boolean; onClose: () => void; pet: Pet; partnerName: string; busy: boolean; onSend: (k: 'HEART' | 'NOTE', t: string | null) => void }) {
+function LetterSheet({ open, onClose, pet, busy, onSend }: { open: boolean; onClose: () => void; pet: Pet; partnerName: string; busy: boolean; onSend: (k: 'HEART' | 'NOTE', t: string | null) => void }) {
   const [text, setText] = useState('')
   useEffect(() => { if (open) setText('') }, [open])
   return (
-    <Sheet open={open} onClose={onClose} title={<span className="flex items-center gap-2"><Icon name="scroll" size={26} />{partnerName}'e götürsün</span>}>
+    <Sheet open={open} onClose={onClose} title={<span className="flex items-center gap-2"><Icon name="scroll" size={26} />Eşine götürsün</span>}>
       <div className="space-y-3">
         <div className="panel-dark flex justify-center py-3 relative overflow-hidden">
           <div className="relative"><PetView look={lookOf(pet)} scale={4} /></div>

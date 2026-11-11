@@ -92,7 +92,7 @@ export function CapsuleOpen({ id, onDone }: { id: string; onDone: () => void }) 
           <>
             <div className="flex justify-center py-3"><Icon name="chest" size={96} className="glow wiggle" /></div>
             <div className="font-pixel text-2xl text-gold">Zaman kapsülü açılıyor!</div>
-            <div className="font-pixel text-[16px] text-ink2">{fromMe ? 'Senin' : `${game.partner?.name ?? ''}'in`} {new Date(cap.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} tarihli mektubu</div>
+            <div className="font-pixel text-[16px] text-ink2">{new Date(cap.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} tarihinde {fromMe ? 'sen yazmıştın' : `${game.partner?.name ?? ''} yazmıştı`}</div>
             <button className="pbtn pbtn-gold w-full text-xl" onClick={() => void open()}><Icon name="lock" size={22} />Mührü kır</button>
           </>
         ) : (

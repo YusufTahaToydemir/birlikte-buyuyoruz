@@ -396,7 +396,7 @@ export function EventOverlay() {
       const card = d.card ? cardOf(String(d.card)) : null
       art = <span className="popin"><PetView look={petLook(Number(d.stage ?? 0))} scale={5} reaction="happy" reactionKey={1} /></span>
       title = 'KEŞİFTEN DÖNDÜ'; color = '#b98aff'
-      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{cur.from} {String(d.name)}'i karşıladı</span>
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{cur.from} karşıladı: {String(d.name)}</span>
         <span className="flex items-center gap-2">{reward(undefined, d.gold)}{card && <span className="flex items-center gap-1 text-[16px]"><Icon name={card.icon} size={18} />{card.name}</span>}</span></span>
       action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="pet" size={20} />Yuva</button>
       break
