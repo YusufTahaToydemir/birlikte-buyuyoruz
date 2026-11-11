@@ -1,5 +1,5 @@
-// Ortak sudoku (sıra tabanlı): aynı tahtada sırayla oynarsınız. Doğru rakam +1, tamamlanan satır/sütun/kutu +3,
-// sırada en çok 3 doğru hamle; yanlış rakam −1 ve sıra eşine geçer. Tahta dolunca çok puanlı kazanır.
+// Ortak sudoku (sıra tabanlı): aynı tahtada sırayla oynarsınız. Kolay hücre (tek aday / tek yer) +1, mantık isteyen zor hücre +3,
+// sırada en çok 3 doğru hamle; yanlış rakam −2 ve sıra eşine geçer. Tahta dolunca çok puanlı kazanır.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSudoku, sudokuCancel, sudokuMove, sudokuPass, sudokuStart, type Hero, type SudokuGame, type SudokuState } from '../lib/game'
 import { SUDOKU_LEVELS } from '../game/sudoku'
@@ -56,7 +56,7 @@ export function SudokuCard({ me, partner }: { me: Hero; partner: Hero }) {
       <Sheet open={pick} onClose={() => setPick(false)} title={<span className="flex items-center gap-2"><Icon name="grid" size={26} />Ortak Sudoku</span>}>
         <div className="space-y-3">
           <div className="panel-dark p-3 font-pixel text-[16px] text-ink2 space-y-1">
-            <div className="flex items-center gap-2"><Icon name="check" size={18} /><span className="text-ink">Doğru rakam +1 · satır, sütun, kutu bitirene +3</span></div>
+            <div className="flex items-center gap-2"><Icon name="check" size={18} /><span className="text-ink">Kolay hücre +1 · zor hücre +3 · yanlış −2</span></div>
             <div className="flex items-center gap-2"><Icon name="swords" size={18} /><span>Sırada en çok 3 hamle · yanlışta sıra eşine</span></div>
             <div className="flex items-center gap-2"><Icon name="crown" size={18} /><span>Tahta dolunca çok puanlı kazanır</span></div>
           </div>
@@ -65,8 +65,7 @@ export function SudokuCard({ me, partner }: { me: Hero; partner: Hero }) {
               <button key={l.n} className="panel p-2 flex flex-col items-center gap-1" disabled={busy} onClick={() => void start(l.n)}>
                 <Stars n={l.n} max={3} size={12} />
                 <span className="font-pixel text-lg">{l.name}</span>
-                <span className="font-pixel text-[13px] text-ink2">{l.givens} ipucu</span>
-              </button>
+                              </button>
             ))}
           </div>
         </div>
@@ -141,13 +140,13 @@ function SudokuCoop({ initial, me, partner, onClose }: { initial: SudokuState; m
       const at = el ? fx.fromEl(el) : { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       if (lm?.ok) {
         placed(cell, d); setFlash(cell); sfx.coin()
-        fx.float(`+${lm.pts}`, at.x, at.y - 10, OWNER_COLOR.me, (lm.units ?? 0) > 0)
-        if ((lm.units ?? 0) > 0) { sfx.great(); fx.burst(at.x, at.y, '#7ec8ff', 14, 60) }
+        fx.float((lm.pts ?? 1) >= 3 ? `+${lm.pts} Zor!` : `+${lm.pts}`, at.x, at.y - 10, OWNER_COLOR.me, (lm.pts ?? 1) >= 3)
+        if ((lm.pts ?? 1) >= 3) { sfx.great(); fx.burst(at.x, at.y, '#7ec8ff', 14, 60) }
         if (r.game?.status === 'DONE') { window.setTimeout(() => { if (r.game!.winner === me.id) { sfx.victory(); fx.confetti(110) } else sfx.cheer() }, 300) }
         else if (r.game?.turn !== me.id) toast(`3 hamle bitti · sıra ${partner.name}'de`)
       } else {
         setBad(cell); sfx.error(); navigator.vibrate?.([40, 30, 40]); window.setTimeout(() => setBad(null), 500)
-        fx.float('−1', at.x, at.y - 10, '#ff4d6d', true)
+        fx.float(`−${Math.abs(lm?.pts ?? 2)}`, at.x, at.y - 10, '#ff4d6d', true)
         toast(`Yanlış! Sıra ${partner.name}'de`)
       }
       void refresh()

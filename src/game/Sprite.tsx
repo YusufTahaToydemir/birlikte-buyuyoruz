@@ -43,19 +43,21 @@ export function BossSprite({ bossKey, scale = 3, className = '', label }: { boss
   return <img src={src} width={BOSS_SIZE * scale} height={BOSS_SIZE * scale} alt={label ?? 'Canavar'} className={`px ${className}`} draggable={false} />
 }
 
-export function SceneBg({ className = '', seed = 7 }: { className?: string; seed?: number }) {
+export function SceneBg({ className = '', seed = 7, region = 0 }: { className?: string; seed?: number; region?: number }) {
   const ref = useRef<HTMLCanvasElement>(null)
-  useEffect(() => { if (ref.current) drawScene(ref.current, 128, 72, timeOfDay(), seed) }, [seed])
+  useEffect(() => { if (ref.current) drawScene(ref.current, 128, 72, timeOfDay(), seed, region) }, [seed, region])
   return <canvas ref={ref} className={`px w-full h-full ${className}`} aria-hidden="true" />
 }
 
 /** Sahne canlılığı: gündüz süzülen bulutlar, gece ateş böcekleri ve yıldızlar */
-export function SceneAmbient() {
+export function SceneAmbient({ region = 0 }: { region?: number }) {
   const tod = timeOfDay()
+  const extra = <RegionAmbient region={region} />
   if (tod === 'night') return (
     <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
       {[[12, 14], [30, 8], [55, 18], [78, 10], [90, 24], [42, 30]].map(([x, y], i) => <span key={'s' + i} className="twinkle" style={{ left: x + '%', top: y + '%', animationDelay: i * 0.4 + 's' }} />)}
       {[[18, 70], [36, 78], [62, 66], [84, 74]].map(([x, y], i) => <span key={'f' + i} className="firefly" style={{ left: x + '%', top: y + '%', animationDelay: i * 0.8 + 's' }} />)}
+      {extra}
     </div>
   )
   return (
@@ -65,8 +67,24 @@ export function SceneAmbient() {
           <PixelCloud scale={c.s} tint={tod === 'dusk' ? '#ffd0b8' : tod === 'dawn' ? '#ffe0f0' : '#ffffff'} />
         </div>
       ))}
+      {extra}
     </div>
   )
+}
+
+/** Bölgeye özgü hareket: orman yaprakları, bataklık sisi, çöl kumu, kar, volkan közü, mağara ışıltısı, yıldızlar */
+function RegionAmbient({ region }: { region: number }) {
+  const n = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  switch (region) {
+    case 1: return <>{n.slice(0, 6).map(i => <span key={i} className="leaf" style={{ left: 10 + i * 15 + '%', animationDelay: i * 1.3 + 's', background: i % 2 ? '#8fd65a' : '#d6b84a' }} />)}</>
+    case 2: return <>{[58, 74, 86].map((t, i) => <span key={i} className="fogband" style={{ top: t + '%', animationDelay: -i * 4 + 's', animationDuration: 12 + i * 4 + 's' }} />)}</>
+    case 3: return <>{n.slice(0, 7).map(i => <span key={i} className="sand" style={{ top: 55 + ((i * 37) % 40) + '%', animationDelay: i * 0.45 + 's' }} />)}</>
+    case 4: return <>{n.map(i => <span key={i} className="snowflake" style={{ left: (i * 23) % 100 + '%', animationDelay: i * 0.6 + 's', animationDuration: 5 + (i % 3) + 's' }} />)}</>
+    case 5: return <>{n.slice(0, 8).map(i => <span key={i} className="ember" style={{ left: 8 + ((i * 41) % 86) + '%', animationDelay: i * 0.5 + 's' }} />)}</>
+    case 6: return <>{n.map(i => <span key={i} className="twinkle" style={{ left: (i * 31) % 100 + '%', top: 30 + ((i * 17) % 60) + '%', background: i % 2 ? '#7ef0ff' : '#b98aff', animationDelay: i * 0.3 + 's' }} />)}</>
+    case 8: return <>{n.map(i => <span key={i} className="twinkle" style={{ left: (i * 29) % 100 + '%', top: (i * 13) % 60 + '%', background: '#ffe680', width: 3, height: 3, animationDelay: i * 0.25 + 's' }} />)}</>
+    default: return null
+  }
 }
 function PixelCloud({ scale, tint }: { scale: number; tint: string }) {
   const u = Math.round(4 * scale)

@@ -1,7 +1,10 @@
 // Yuva: ortak evcil dostlar. Birlikte sahiplenirsiniz (yarı yarıya), sever ve birlikte yaptıklarınızla büyütürsünüz,
 // ortak gardıroptan giydirirsiniz. Her dost evresine göre XP ve canavar hasarına küçük bir güç verir.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getPets, LOVE_REASON, petAdoptCancel, petAdoptConfirm, petAdoptStart, petBuyItem, petDress, petPat, petRename, type Pet, type PetsState } from '../lib/game'
+import { getPets, LOVE_REASON, petAdoptCancel, petAdoptConfirm, petAdoptStart, petBuyItem, petDress, petExplore, petExploreClaim, petPat, petRename, petSendLetter, type Loot, type Pet, type PetsState } from '../lib/game'
+import { cardOf, RARITY, REGIONS, regionOf, seedOf, storyOf } from '../game/world'
+import { Flower } from './Garden'
+import { Tip } from './Moments'
 import { PET_ITEMS, PET_SPECIES, SLOT_INFO, SPECIES_ORDER, STAGES, type PetItem, type PetLook, type PetSlot, type PetSpecies } from '../game/art/pets'
 import { PetView } from '../game/Pet'
 import { Icon, SceneBg } from '../game/Sprite'
@@ -10,7 +13,7 @@ import { sfx } from '../game/sfx'
 import { Bar, Sheet, toast, toastError, useGame } from '../game/ui'
 
 const lookOf = (p: Pet, over?: Partial<PetLook>): PetLook => ({ species: p.species, color: p.color, stage: p.stage, outfit: p.outfit, ...over })
-const SLOTS: Array<PetSlot | 'COLOR'> = ['HEAD', 'NECK', 'FACE', 'BACK', 'AURA', 'COLOR']
+const SLOTS: PetSlot[] = ['HEAD', 'NECK', 'FACE', 'BACK', 'AURA']
 
 export function PetSheet({ onClose }: { onClose: () => void }) {
   const { game, refresh } = useGame()
@@ -48,6 +51,7 @@ export function PetSheet({ onClose }: { onClose: () => void }) {
 
         {!st ? <div className="font-pixel text-ink2 text-center pt-16 blinkdot">Yükleniyor…</div> : (
           <>
+            <Tip id="pets-v4" icon="pet" text="Dostunu sev, keşfe gönder ya da eşine elçi olarak yolla." />
             {/* dost seçici */}
             {(st.pets.length > 0 || st.pending) && (
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -103,8 +107,17 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
   pet: Pet; st: PetsState; partnerName: string; busy: boolean; gold: number
   act: (fn: () => Promise<PetsState>, good?: (r: PetsState) => void) => Promise<PetsState | null>
 }) {
-  const [squish, setSquish] = useState(0)
-  const [slot, setSlot] = useState<PetSlot | 'COLOR'>('HEAD')
+  const { game } = useGame()
+  const [react, setReact] = useState<{ t: 'pat' | 'happy' | 'eat'; k: number }>({ t: 'pat', k: 0 })
+  const bump = (t: 'pat' | 'happy' | 'eat') => setReact(o => ({ t, k: o.k + 1 }))
+  const [slot, setSlot] = useState<PetSlot>('HEAD')
+  const [exploreOpen, setExploreOpen] = useState(false)
+  const [letterOpen, setLetterOpen] = useState(false)
+  const [loot, setLoot] = useState<Loot | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { if (!pet.away) return; const t = window.setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [pet.away])
+  const awayLeft = pet.away ? Math.max(0, new Date(pet.away.endsAt).getTime() - now) : 0
+  const region = game.world?.region ?? 0
   const [buy, setBuy] = useState<PetItem | null>(null)
   const [rename, setRename] = useState(false)
   const [name, setName] = useState(pet.name)
@@ -115,7 +128,7 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
 
   const pat = async (e: React.MouseEvent<HTMLElement>) => {
     const at = fx.fromEl(e.currentTarget)
-    setSquish(s => s + 1)
+    bump('pat')
     if (pet.patMe) { sfx.tick(); fx.sparkle(at.x, at.y - 20, 4, '#ff8ab5', 30); return }
     await act(() => petPat(pet.id), r => {
       const p = r.pets.find(x => x.id === pet.id)
@@ -123,31 +136,80 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
       fx.burst(at.x, at.y - 20, '#ff6aa8', 14, 70)
       fx.float(`+${st.cfg.patLove + (p?.patPartner ? st.cfg.patBoth : 0)} ❤`, at.x, at.y - 60, '#ff6aa8', true)
       if (p && p.stage > pet.stage) { sfx.levelUp(); fx.confetti(90) }
+      window.setTimeout(() => bump('happy'), 700)
     })
   }
 
+  const claim = async () => {
+    if (!pet.away) return
+    setBusyLocal(true)
+    try {
+      const r = await petExploreClaim(pet.away.id)
+      sfx.open(); sfx.levelUp(); fx.confetti(60); navigator.vibrate?.([20, 40, 20])
+      setLoot(r.loot); bump('happy')
+      void act(async () => r)
+    } catch (e) { toastError(e) } finally { setBusyLocal(false) }
+  }
+  const [busyLocal, setBusyLocal] = useState(false)
+
   const wear = async (it: PetItem) => {
-    if (it.slot === 'COLOR') { await act(() => petDress(pet.id, 'COLOR', it.key), () => { sfx.sparkle(); fx.flash('rgba(255,215,90,.25)') }); return }
-    const on = pet.outfit[it.slot] === it.key
-    await act(() => petDress(pet.id, it.slot as PetSlot, on ? null : it.key), () => { if (on) sfx.undo(); else { sfx.buy(); setSquish(s => s + 1) } })
+    const on = pet.outfit[it.slot as PetSlot] === it.key
+    await act(() => petDress(pet.id, it.slot as PetSlot, on ? null : it.key), () => { if (on) sfx.undo(); else { sfx.buy(); bump('happy') } })
   }
 
-  const items = slot === 'COLOR' ? [] : PET_ITEMS.filter(i => i.slot === slot)
+  const items = PET_ITEMS.filter(i => i.slot === slot)
   return (
     <>
       {/* sahne */}
       <section className="panel overflow-hidden relative h-[236px]">
-        <SceneBg className="absolute inset-0" seed={pet.name.length + 3} />
+        <SceneBg className="absolute inset-0" seed={pet.name.length + 3} region={pet.away ? pet.away.region : region} />
         <div className="absolute top-2 left-2 panel-dark px-2 py-1 font-pixel text-[14px] flex items-center gap-2">
           <span className="flex items-center gap-0.5" title="Sen"><Icon name="heart" size={14} className={pet.patMe ? '' : 'opacity-30 grayscale'} />sen</span>
           <span className="flex items-center gap-0.5" title={partnerName}><Icon name="heart" size={14} className={pet.patPartner ? '' : 'opacity-30 grayscale'} />{partnerName}</span>
         </div>
         <div className="absolute top-2 right-2 panel-dark px-2 py-1 font-pixel text-[14px] text-gold">{STAGES[pet.stage]}</div>
-        <button className="absolute left-1/2 bottom-[14px] -translate-x-1/2" onClick={e => void pat(e)} disabled={busy} aria-label={`${pet.name}'i sev`}>
-          <span key={squish} className={squish ? 'pet-squish inline-block' : 'inline-block'}><PetView look={lookOf(pet)} scale={5.2} /></span>
-        </button>
-        {!pet.patMe && <span className="absolute left-1/2 top-[34px] -translate-x-1/2 font-pixel text-[15px] text-ink panel-dark px-2 py-0.5 bob pointer-events-none flex items-center gap-1"><Icon name="hand" size={16} />Sev</span>}
+        {pet.away ? (
+          awayLeft > 0 ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <div className="panel-dark px-3 py-2 flex flex-col items-center gap-1">
+                <Icon name="bag" size={40} className="bob" />
+                <span className="font-pixel text-lg">{pet.name} keşifte</span>
+                <span className="font-pixel text-[15px] text-ink2 flex items-center gap-1"><Icon name={regionOf(pet.away.region).icon} size={14} />{regionOf(pet.away.region).name}</span>
+                <span className="font-pixel text-2xl text-gold">{fmtLeft(awayLeft)}</span>
+              </div>
+            </div>
+          ) : (
+            <button className="absolute left-1/2 bottom-[14px] -translate-x-1/2 flex flex-col items-center walkin" onClick={() => void claim()} disabled={busyLocal} aria-label={`${pet.name} döndü`}>
+              <span className="panel-dark px-2 py-0.5 font-pixel text-[15px] text-gold bob flex items-center gap-1 mb-1"><Icon name="bag" size={16} />Döndü! Karşıla</span>
+              <PetView look={lookOf(pet)} scale={5.2} reaction="happy" reactionKey={1} />
+            </button>
+          )
+        ) : (
+          <>
+            <button className="absolute left-1/2 bottom-[14px] -translate-x-1/2" onClick={e => void pat(e)} disabled={busy} aria-label={`${pet.name}'i sev`}>
+              <PetView look={lookOf(pet)} scale={5.2} reaction={react.t} reactionKey={react.k} />
+            </button>
+            {!pet.patMe && <span className="absolute left-1/2 top-[34px] -translate-x-1/2 font-pixel text-[15px] text-ink panel-dark px-2 py-0.5 bob pointer-events-none flex items-center gap-1"><Icon name="hand" size={16} />Sev</span>}
+          </>
+        )}
       </section>
+
+      {/* keşif + elçi */}
+      <div className="grid grid-cols-2 gap-2">
+        <button className="pbtn pbtn-purple !min-h-[56px]" disabled={busy || !!pet.away} onClick={() => { sfx.open(); setExploreOpen(true) }}>
+          <Icon name="map" size={26} />Keşfe gönder
+        </button>
+        <button className="pbtn pbtn-dark !min-h-[56px] relative" disabled={busy || !!pet.away || !game.partner} onClick={() => { sfx.open(); setLetterOpen(true) }}>
+          <Icon name="scroll" size={26} />Elçi
+          <span className="absolute top-1 right-1.5 font-pixel text-[12px] text-ink2">{Math.max(0, 3 - (game.lettersToday ?? 0))}</span>
+        </button>
+      </div>
+
+      <ExploreSheet open={exploreOpen} onClose={() => setExploreOpen(false)} pet={pet} region={region} busy={busy}
+        onGo={reg => void act(() => petExplore(pet.id, reg), () => { sfx.open(); setExploreOpen(false); toast(`${pet.name} ${regionOf(reg).name} yolunda!`) })} />
+      <LetterSheet open={letterOpen} onClose={() => setLetterOpen(false)} pet={pet} partnerName={partnerName} busy={busy}
+        onSend={(kind, text) => void act(() => petSendLetter(pet.id, kind, text), () => { sfx.sparkle(); setLetterOpen(false); bump('happy'); toast(`${pet.name} yola çıktı · ${partnerName} açınca görecek`) })} />
+      {loot && <LootReveal loot={loot} onClose={() => setLoot(null)} />}
 
       {/* ad + sevgi çubuğu */}
       <div className="panel p-2.5 space-y-1.5">
@@ -165,7 +227,7 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
 
       {/* gardırop */}
       <section className="panel p-2.5 space-y-2">
-        <div className="grid grid-cols-6 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           {SLOTS.map(s => (
             <button key={s} onClick={() => { sfx.tab(); setSlot(s) }} aria-label={SLOT_INFO[s].name}
               className={`h-12 rounded-[4px] flex flex-col items-center justify-center font-pixel text-[11px] ${slot === s ? 'bg-panel2 text-gold' : 'text-ink2'}`}
@@ -174,25 +236,7 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
             </button>
           ))}
         </div>
-        {slot === 'COLOR' ? (
-          <div className="grid grid-cols-3 gap-2">
-            {sp.colors.map((c, i) => {
-              const key = 'c' + i, on = pet.color === key
-              return (
-                <button key={key} className={`panel-dark p-1.5 flex flex-col items-center gap-0.5 ${on ? '!border-gold' : ''}`} disabled={busy}
-                  onClick={() => { if (!on) void act(() => petDress(pet.id, 'COLOR', key), () => sfx.sparkle()) }}>
-                  <PetView look={lookOf(pet, { color: key, outfit: {} })} scale={2.2} animate={false} />
-                  <span className="font-pixel text-[13px]">{c.name}</span>
-                  {on && <Icon name="check" size={14} />}
-                </button>
-              )
-            })}
-            {PET_ITEMS.filter(i => i.slot === 'COLOR').map(it => (
-              <ItemCard key={it.key} it={it} pet={pet} owned={st.wardrobe.includes(it.key)} on={pet.color === it.key} locked={maxStage < it.stage} gold={gold} busy={busy}
-                preview={lookOf(pet, { color: it.key, outfit: {} })} onWear={() => void wear(it)} onBuy={() => setBuy(it)} />
-            ))}
-          </div>
-        ) : (
+        {(
           <div className="grid grid-cols-3 gap-2">
             {items.map(it => (
               <ItemCard key={it.key} it={it} pet={pet} owned={st.wardrobe.includes(it.key)} on={pet.outfit[it.slot as PetSlot] === it.key} locked={maxStage < it.stage} gold={gold} busy={busy}
@@ -208,7 +252,7 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
           <div className="space-y-4">
             <div className="panel-dark flex justify-center py-4 relative overflow-hidden">
               <div className="absolute inset-[-60%] rays opacity-25" />
-              <div className="relative"><PetView look={buy.slot === 'COLOR' ? lookOf(pet, { color: buy.key }) : lookOf(pet, { outfit: { ...pet.outfit, [buy.slot]: buy.key } })} scale={6} /></div>
+              <div className="relative"><PetView look={lookOf(pet, { outfit: { ...pet.outfit, [buy.slot]: buy.key } })} scale={6} /></div>
             </div>
             <button className="pbtn pbtn-gold w-full text-xl" disabled={busy || gold < buy.price}
               onClick={() => void act(() => petBuyItem(buy.key), () => {
@@ -229,6 +273,107 @@ function PetMain({ pet, st, partnerName, busy, act, gold }: {
         </div>
       </Sheet>
     </>
+  )
+}
+
+const fmtLeft = (ms: number) => { const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}sa ${m % 60}dk` : `${m} dk` }
+
+/** Keşif yeri seçimi: açık bölgeler; sisli olanlar kilitli */
+function ExploreSheet({ open, onClose, pet, region, busy, onGo }: { open: boolean; onClose: () => void; pet: Pet; region: number; busy: boolean; onGo: (r: number) => void }) {
+  const [pick, setPick] = useState(region)
+  useEffect(() => { if (open) setPick(region) }, [open, region])
+  const left = 2 - (pet.tripsToday ?? 0)
+  return (
+    <Sheet open={open} onClose={onClose} title={<span className="flex items-center gap-2"><Icon name="map" size={26} />Nereye gitsin?</span>}>
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          {REGIONS.map((rg, i) => {
+            const locked = i > region
+            return (
+              <button key={rg.key} disabled={locked} onClick={() => { sfx.click(); setPick(i) }} aria-label={locked ? 'Sisli bölge' : rg.name}
+                className={`panel-dark overflow-hidden relative h-[74px] ${pick === i && !locked ? '!border-gold' : ''}`}>
+                {locked ? <div className="absolute inset-0 map-fog grid place-items-center font-pixel text-2xl text-[#5a5f7a]">?</div> : (
+                  <>
+                    <SceneBg className="absolute inset-0" seed={i * 7 + 3} region={i} />
+                    <span className="absolute bottom-0 left-0 right-0 bg-black/55 font-pixel text-[12px] leading-tight py-0.5 text-center">{rg.name}</span>
+                  </>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <div className="panel-dark p-2 flex items-center justify-around font-pixel text-[15px]">
+          <span className="flex items-center gap-1"><Icon name="moon" size={16} />4 saat</span>
+          <span className="flex items-center gap-1"><Icon name="coin" size={16} />ikinize</span>
+          <span className="flex items-center gap-1"><Icon name="sparkle" size={16} />kart</span>
+          <span className="flex items-center gap-1"><Icon name="flower" size={16} />tohum</span>
+        </div>
+        <button className="pbtn pbtn-purple w-full text-xl" disabled={busy || left <= 0} onClick={() => onGo(pick)}>
+          <Icon name="bag" size={24} />{left > 0 ? `Uğurla · bugün ${left}` : 'Bugün yoruldu'}
+        </button>
+      </div>
+    </Sheet>
+  )
+}
+
+/** Elçi: dost eşine kalp ya da kısa not götürür */
+function LetterSheet({ open, onClose, pet, partnerName, busy, onSend }: { open: boolean; onClose: () => void; pet: Pet; partnerName: string; busy: boolean; onSend: (k: 'HEART' | 'NOTE', t: string | null) => void }) {
+  const [text, setText] = useState('')
+  useEffect(() => { if (open) setText('') }, [open])
+  return (
+    <Sheet open={open} onClose={onClose} title={<span className="flex items-center gap-2"><Icon name="scroll" size={26} />{partnerName}'e götürsün</span>}>
+      <div className="space-y-3">
+        <div className="panel-dark flex justify-center py-3 relative overflow-hidden">
+          <div className="relative"><PetView look={lookOf(pet)} scale={4} /></div>
+          <span className="absolute right-[30%] top-3 envelope"><Icon name="scroll" size={26} /></span>
+        </div>
+        <button className="pbtn pbtn-red w-full text-xl" disabled={busy} onClick={() => onSend('HEART', null)}><Icon name="heart" size={24} />Kalp gönder</button>
+        <div className="flex gap-2">
+          <input className="input font-pixel text-lg flex-1" maxLength={80} placeholder="Tek satır not…" value={text} onChange={e => setText(e.target.value)} aria-label="Not" />
+          <button className="pbtn pbtn-gold !px-3" disabled={busy || !text.trim()} onClick={() => onSend('NOTE', text.trim())} aria-label="Notu gönder"><Icon name="scroll" size={22} /></button>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
+
+/** Keşiften dönüş: hikâye, altın, kart çevirme, tohum */
+function LootReveal({ loot, onClose }: { loot: Loot; onClose: () => void }) {
+  const card = loot.card ? cardOf(loot.card) : null
+  const seed = loot.seed ? seedOf(loot.seed) : null
+  const [flip, setFlip] = useState(false)
+  useEffect(() => { const t = window.setTimeout(() => { setFlip(true); if (card) { if (card.rarity === 3) { sfx.levelUp(); fx.confetti(80) } else sfx.sparkle() } }, 900); return () => clearTimeout(t) }, [card])
+  const look: PetLook = { species: loot.species, color: loot.color, stage: loot.stage, outfit: loot.outfit ?? {} }
+  return (
+    <div className="fixed inset-0 z-[55] bg-black/75 flex items-center justify-center p-4" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="panel w-full max-w-[400px] p-4 space-y-3 dropin" onClick={e => e.stopPropagation()}>
+        <div className="relative h-[120px] panel-dark overflow-hidden">
+          <SceneBg className="absolute inset-0" seed={loot.story + 11} region={loot.region} />
+          <div className="absolute left-1/2 bottom-2 -translate-x-1/2"><PetView look={look} scale={3.4} reaction="happy" reactionKey={1} /></div>
+        </div>
+        <p className="font-pixel text-lg text-center leading-snug">{storyOf(loot.region, loot.story, loot.name)}</p>
+        <div className="flex justify-center gap-2 flex-wrap">
+          <span className="panel-dark px-2 py-1 font-pixel text-lg text-gold flex items-center gap-1"><Icon name="coin" size={20} />+{loot.gold} ikinize</span>
+          <span className="panel-dark px-2 py-1 font-pixel text-lg text-hp flex items-center gap-1"><Icon name="heart" size={20} />+{loot.love}</span>
+          {seed && <span className="panel-dark px-2 py-1 font-pixel text-lg flex items-center gap-1"><Flower seed={seed.key} stage={0} size={22} />{seed.name} tohumu</span>}
+        </div>
+        {card && (
+          <div className="flex justify-center" style={{ perspective: 600 }}>
+            {flip ? (
+              <div className={`cardflip w-[150px] panel-dark overflow-hidden ${card.rarity === 3 ? 'card-rare' : ''}`}>
+                <div className="relative h-[84px]"><SceneBg className="absolute inset-0" seed={card.n * 13} region={card.region} />
+                  <span className="absolute inset-0 grid place-items-center"><Icon name={card.icon} size={44} className="glow" /></span></div>
+                <div className="p-1.5 text-center">
+                  <div className="font-pixel text-[15px] leading-tight">{card.name}</div>
+                  <div className="font-pixel text-[12px]" style={{ color: RARITY[card.rarity].color }}>{loot.newCard ? 'YENİ · ' : ''}{RARITY[card.rarity].name}</div>
+                </div>
+              </div>
+            ) : <div className="w-[150px] h-[128px] panel-dark grid place-items-center"><Icon name="sparkle" size={40} className="wiggle" /></div>}
+          </div>
+        )}
+        <button className="pbtn pbtn-gold w-full text-xl" onClick={() => { sfx.click(); onClose() }}>Yaşasın!</button>
+      </div>
+    </div>
   )
 }
 
@@ -325,6 +470,7 @@ function Adopt({ st, me, partnerName, busy, gold, hasPartner, onStart, onConfirm
           </button>
         ))}
       </div>
+      <div className="font-pixel text-[13px] text-ink2 text-center -mt-1">Tür ve renk ömür boyu böyle kalır</div>
       <input className="input font-pixel text-xl text-center" maxLength={16} placeholder={`Adı (ör. ${PET_SPECIES[species].name === 'Kedi' ? 'Pamuk' : 'Boncuk'})`} value={name} onChange={e => setName(e.target.value)} aria-label="Dostun adı" />
       {hasPartner ? (
         <button className="pbtn pbtn-gold w-full text-xl" disabled={busy || !name.trim() || gold < half} onClick={() => onStart(species, color, name.trim())}>

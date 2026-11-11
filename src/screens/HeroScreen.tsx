@@ -9,6 +9,7 @@ import { sfx } from '../game/sfx'
 import { Bar, Sheet, useGame } from '../game/ui'
 import { CalendarPanel } from './Calendar'
 import { SeasonCard } from './Season'
+import { Tip } from './Moments'
 
 const SLOTS: Array<{ slot: Slot; icon: string; kind: string }> = [
   { slot: 'weapon', icon: 'sword', kind: 'WEAPON' },
@@ -43,6 +44,7 @@ export function HeroScreen() {
 
   return (
     <div className="space-y-3">
+      <Tip id="hero-v4" icon="helmet" text="Ekipman yuvalarına dokunup giyin; beşinci yuva dostlarınızın yuvası." />
       {/* Vitrin */}
       <section className="panel relative overflow-hidden" style={{ background: `radial-gradient(circle at 50% 60%, ${info.color}33, transparent 60%), #241c3e` }}>
         <div className="absolute inset-[-60%] rays opacity-30 pointer-events-none" />

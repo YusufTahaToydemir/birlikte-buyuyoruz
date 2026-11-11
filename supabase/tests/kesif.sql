@@ -86,7 +86,7 @@ begin
   perform pet_explore_claim((p->'pets'->0->'away'->>'id')::uuid);
   v_err := null; begin perform pet_explore(pet, 0); exception when others then v_err := sqlerrm; end;
   if v_err is distinct from 'DAILY_LIMIT' then raise exception 'günlük keşif sınırı: %', v_err; end if;
-  res := res || E'\nkeşif · kilit, tek yolculuk, erken dönüş yok, ikinize ' || (p->'loot'->>'gold') || ' altın, günde 2 ✓';
+  res := res || E'\nkeşif · kilit, tek yolculuk, erken dönüş yok, ikinize altın + dosta sevgi, günde 2 ✓';
 
   -- 4) Harita: 4 zafer → yeni bölge, anı ve olay
   for i in 1..4 loop

@@ -1,6 +1,7 @@
 import { Component, StrictMode, lazy, Suspense, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './world.css'
 import { App } from './App'
 
 // Sanat önizlemesi yalnızca geliştirmede: #/art

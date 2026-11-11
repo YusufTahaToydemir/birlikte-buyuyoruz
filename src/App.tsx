@@ -14,6 +14,10 @@ import { music } from './game/music'
 import { titleFor } from './lib/game'
 import { SettingsSheet } from './screens/SettingsSheet'
 import { PetSheet } from './screens/PetSheet'
+import { WorldMap } from './screens/WorldMap'
+import { Book } from './screens/Book'
+import { GardenSheet } from './screens/Garden'
+import { CapsuleOpen, Morning, useMorning } from './screens/Moments'
 import { EventOverlay } from './game/Events'
 import { FxLayer } from './game/fx'
 import { Icon, Portrait } from './game/Sprite'
@@ -69,6 +73,7 @@ function GameRoot() {
   const [tab, setTab] = useState<TabId>('quest')
   const [settings, setSettings] = useState(false)
   const [pets, setPets] = useState(false)
+  const [overlay, setOverlay] = useState<'map' | 'book' | 'garden' | null>(null)
   const busy = useRef(0)
 
   const setGame = useCallback((g: Game) => setGameState(g), [])
@@ -94,10 +99,12 @@ function GameRoot() {
   }, [refresh])
 
   useEffect(() => { setSoundEnabled(game?.hero?.sound ?? true) }, [game?.hero?.sound])
+  useEffect(() => { music.setRegion(game?.world?.region ?? 0) }, [game?.world?.region])
   useEffect(() => { music.play(!game?.hero ? 'title' : tab === 'arena' ? 'battle' : tab === 'games' ? 'arcade' : 'town') }, [tab, game?.hero])
 
   const go = useCallback((t: TabId) => { sfx.tab(); setTab(t); window.scrollTo({ top: 0 }) }, [])
-  const ctx = useMemo<GameCtx | null>(() => game ? { game, setGame, refresh, run, go, openSettings: () => setSettings(true), openPets: () => setPets(true) } : null, [game, setGame, refresh, run, go])
+  const ctx = useMemo<GameCtx | null>(() => game ? { game, setGame, refresh, run, go, openSettings: () => setSettings(true), openPets: () => setPets(true),
+    openMap: () => setOverlay('map'), openBook: () => setOverlay('book'), openGarden: () => setOverlay('garden') } : null, [game, setGame, refresh, run, go])
 
   if (!game || !ctx) return loadError ? (
     <div className="p-6 text-center space-y-4 pt-24">
@@ -114,7 +121,7 @@ function GameRoot() {
     loot: game.incomingRequests > 0,
     arena: game.couple.hasPartner && game.cheersLeft > 0,
     games: game.play.duels > 0 || game.play.together > 0 || game.play.word || !!game.play.sudoku,
-    quest: !!game.play.petAdopt,
+    quest: !!game.play.petAdopt || !!game.play.fork || !!game.play.explore || (game.petMail?.length ?? 0) > 0,
   }
 
   return (
@@ -150,8 +157,23 @@ function GameRoot() {
       <EventOverlay />
       <SettingsSheet open={settings} onClose={() => setSettings(false)} />
       {pets && <PetSheet onClose={() => setPets(false)} />}
+      {overlay === 'map' && <WorldMap onClose={() => setOverlay(null)} />}
+      {overlay === 'book' && <Book onClose={() => setOverlay(null)} />}
+      {overlay === 'garden' && <GardenSheet onClose={() => setOverlay(null)} />}
+      <DailyMoments />
     </GameContext.Provider>
   )
+}
+
+/** Günaydın sahnesi ve açılma günü gelen zaman kapsülü */
+function DailyMoments() {
+  const ctx = useGameSafe()
+  const [morning, doneMorning] = useMorning()
+  const [capsuleDone, setCapsuleDone] = useState<string | null>(null)
+  const cap = ctx?.game.play.capsule ?? null
+  if (morning) return <Morning onDone={doneMorning} />
+  if (cap && cap !== capsuleDone) return <CapsuleOpen id={cap} onDone={() => setCapsuleDone(cap)} />
+  return null
 }
 
 /** Sayı yumuşakça hedefe sayar (altın, XP) */

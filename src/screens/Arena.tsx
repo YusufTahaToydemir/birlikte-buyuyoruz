@@ -7,9 +7,10 @@ import { sfx } from '../game/sfx'
 import { Bar, Segments, Sheet, toastError, useGame } from '../game/ui'
 import { online } from './Games'
 import { CastlePanel } from './Castle'
+import { Tip } from './Moments'
 
 export function Arena() {
-  const { game, run } = useGame()
+  const { game, run, openMap } = useGame()
   const me = game.hero!
   const partner = game.partner
   const boss = game.boss
@@ -45,6 +46,7 @@ export function Arena() {
 
   return (
     <div className="space-y-3">
+      <Tip id="arena-v4" icon="swords" text="Her 4 canavar haritada yeni bir bölgenin sisini açar." />
       {/* Canavar */}
       {boss ? (
         <section className="panel overflow-hidden relative p-3 pt-2" style={{ background: 'linear-gradient(#2a1840, #3a1f3a 60%, #2a2146)' }}>
@@ -54,6 +56,7 @@ export function Arena() {
             <span className="flex items-center gap-1.5 shrink-0">
               {boss.weak && !boss.defeated && <span className="panel-dark px-1.5 py-0.5 text-[14px] flex items-center gap-1" style={{ color: CAT_INFO[boss.weak].color }} title={`Zayıf noktası: ${CAT_INFO[boss.weak].name}`}><Icon name={CAT_INFO[boss.weak].icon} size={16} />×1.5</span>}
               <span className="panel-dark px-2 py-0.5 text-[16px] text-ink2 flex items-center gap-1"><Icon name="moon" size={14} />{daysLeft} gün</span>
+              <button className="panel-dark px-1.5 py-0.5 grid place-items-center" onClick={() => { sfx.open(); openMap() }} aria-label="Harita"><Icon name="map" size={18} /></button>
             </span>
           </div>
           {!boss.defeated && boss.hp < boss.maxHp * 0.25 && (

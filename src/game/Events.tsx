@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ACHIEVEMENTS, markEventsSeen, SKILLS, TICKET_TIERS, titleFor, unlocksAt, type DuelGame, type GameEvent, type TicketTier } from '../lib/game'
 import type { HeroClass } from './art/hero'
 import { GAME_INFO } from './minigames'
-import { BossSprite, HeroSprite, Icon } from './Sprite'
+import { BossSprite, HeroSprite, Icon, SceneBg } from './Sprite'
+import { cardOf, FORK_FX, FORK_OPTIONS, regionOf, seedOf } from './world'
+import { music } from './music'
 import { PetView } from './Pet'
 import { PET_SPECIES, STAGES, type PetLook, type PetSpecies } from './art/pets'
 import { fx } from './fx'
@@ -12,9 +14,21 @@ import { sfx } from './sfx'
 import { toast, useGame } from './ui'
 
 /** Pencere açmadan yalnızca kısa bildirim gösterilen olaylar */
-const QUIET = new Set(['WORD_GUESS', 'PET_ITEM', 'SUDOKU_TURN'])
-const quietText = (e: GameEvent) => e.kind === 'PET_ITEM' ? `${e.from ?? ''} gardıroba ekledi: ${String(e.data.name ?? '')}`
-  : e.kind === 'SUDOKU_TURN' ? 'Sudoku: sıra sende!' : `${e.from ?? ''} bir kelime tahmin etti`
+const QUIET = new Set(['WORD_GUESS', 'PET_ITEM', 'SUDOKU_TURN', 'FORK_VOTE', 'PET_EXPLORE', 'GARDEN_WATER', 'GARDEN_PLANT', 'GARDEN_HARVEST', 'CAPSULE_NEW'])
+const quietText = (e: GameEvent) => {
+  const d = e.data as Record<string, unknown>
+  switch (e.kind) {
+    case 'PET_ITEM': return `${e.from ?? ''} gardıroba ekledi: ${String(d.name ?? '')}`
+    case 'SUDOKU_TURN': return 'Sudoku: sıra sende!'
+    case 'FORK_VOTE': return `${e.from ?? ''} yol ayrımında seçimini yaptı · sıra sende`
+    case 'PET_EXPLORE': return `${String(d.name ?? '')} ${regionOf(Number(d.region)).name} keşfine çıktı`
+    case 'GARDEN_WATER': return `${e.from ?? ''} bahçeyi suladı · sen de sula, büyüsün`
+    case 'GARDEN_PLANT': return `${e.from ?? ''} bahçeye ${seedOf(String(d.seed))?.name ?? 'tohum'} ekti`
+    case 'GARDEN_HARVEST': return `${e.from ?? ''} hasat yaptı · +${String(d.gold ?? '')} altın`
+    case 'CAPSULE_NEW': return `${e.from ?? ''} bir zaman kapsülü mühürledi · ${String(d.months ?? '')} ay sonra açılacak`
+    default: return `${e.from ?? ''} bir kelime tahmin etti`
+  }
+}
 
 export function EventOverlay() {
   const { game, go, openPets } = useGame()
@@ -67,6 +81,9 @@ export function EventOverlay() {
       case 'PET_ADOPT_REQUEST': sfx.cheer(); fx.sparkle(mid.x, mid.y, 12, '#ff8ab5', 70); break
       case 'PET_ADOPTED': case 'PET_STAGE': sfx.levelUp(); fx.confetti(100); fx.ring(mid.x, mid.y, '#ff8ab5'); navigator.vibrate?.([20, 40, 60]); break
       case 'SUDOKU_START': sfx.roar(); fx.shake(); break
+      case 'REGION': sfx.victory(); fx.flash('rgba(255,255,255,.5)'); fx.confetti(120); navigator.vibrate?.([30, 30, 80]); music.preview(Number(cur.data.region)); break
+      case 'FORK_RESULT': if (cur.data.agreed) { sfx.victory(); fx.confetti(70) } else { sfx.dice(); window.setTimeout(() => sfx.good(), 900) } break
+      case 'PET_BACK': sfx.levelUp(); fx.sparkle(mid.x, mid.y, 12, '#b98aff', 70); break
       case 'SUDOKU_DONE': if (cur.data.result === 'WIN') { sfx.victory(); fx.confetti(80) } else if (cur.data.result === 'LOSE') sfx.hurt(); else sfx.cheer(); break
       default: sfx.click()
     }
@@ -313,7 +330,7 @@ export function EventOverlay() {
     case 'PET_REFUND':
       art = <div className="flex items-end gap-2"><Icon name="coin" size={70} className="glow" /><Icon name="egg" size={56} className="egg-wobble" /></div>
       title = 'İADE'; color = '#ffcc3a'
-      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Evcil dostlar artık ortak! {String(d.name)} için ödediğin altın geri geldi</span>{reward(undefined, d.gold)}</span>
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{d.paint ? 'Dostun rengi artık kalıcı!' : 'Evcil dostlar artık ortak!'} {String(d.name)} için ödediğin altın geri geldi</span>{reward(undefined, d.gold)}</span>
       action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="pet" size={20} />Yuva</button>
       break
     case 'PET_ADOPT_REQUEST':
@@ -346,6 +363,42 @@ export function EventOverlay() {
       art = <div className="flex items-end gap-3"><div className={r === 'WIN' ? 'jump' : ''}><HeroSprite cls={h.class} look={h.look} gear={h.equipped} scale={2.4} pose={r === 'WIN' ? 'joy' : r === 'LOSE' ? 'hurt' : undefined} /></div><Icon name="grid" size={48} className="mb-6" /></div>
       title = r === 'WIN' ? 'KAZANDIN!' : r === 'LOSE' ? 'Kaybettin' : 'Berabere'; color = r === 'WIN' ? '#ffcc3a' : r === 'LOSE' ? '#ff4d6d' : '#4cc9f0'
       sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">Sudoku bitti · {String(d.me)} – {String(d.them)}</span>{reward(r === 'WIN' ? 30 : r === 'LOSE' ? 15 : 20, r === 'WIN' ? 40 : r === 'LOSE' ? 20 : 30)}</span>
+      break
+    }
+    case 'REGION': {
+      const rg = regionOf(Number(d.region))
+      art = <div className="w-[260px] h-[140px] panel-dark overflow-hidden relative reveal"><SceneBg className="absolute inset-0" seed={Number(d.region) * 7 + 3} region={Number(d.region)} /></div>
+      title = 'SİS DAĞILDI!'; color = rg.color
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink flex items-center gap-1"><Icon name={rg.icon} size={18} />Yeni bölge: {rg.name}</span><span className="text-ink2 text-[16px]">Yeni manzara, müzik ve keşif yeri</span></span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="map" size={20} />Keşfe</button>
+      break
+    }
+    case 'FORK_RESULT': {
+      const opt = (k: string) => FORK_OPTIONS[k] ?? { name: k, icon: 'star' }
+      const pair = (game.fork?.option ?? null)
+      const keyOf = (c: unknown) => pair ? (c === 'A' ? pair.a.key : pair.b.key) : String(c)
+      const fxOf = (c: unknown) => pair ? (c === 'A' ? pair.a.fx : pair.b.fx) : ''
+      const won = keyOf(d.result), fxw = FORK_FX[fxOf(d.result)]
+      art = (
+        <div className="flex items-end gap-4">
+          <span className="flex flex-col items-center gap-1"><Icon name={opt(keyOf(d.mine)).icon} size={52} className={d.result === d.mine ? 'glow' : 'opacity-40 grayscale'} /><span className="font-pixel text-[14px]">sen</span></span>
+          {d.agreed ? <Icon name="heart" size={44} className="bob mb-6" /> : <Icon name="dice" size={48} className="diceroll mb-6" />}
+          <span className="flex flex-col items-center gap-1"><Icon name={opt(keyOf(d.theirs)).icon} size={52} className={d.result === d.theirs ? 'glow' : 'opacity-40 grayscale'} /><span className="font-pixel text-[14px]">{cur.from}</span></span>
+        </div>
+      )
+      title = d.agreed ? 'AYNI YOL!' : 'ZAR ATILDI'; color = d.agreed ? '#5bd17c' : '#b98aff'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{opt(won).name} yolundasınız</span>
+        {fxw && <span className="flex items-center gap-1" style={{ color: fxw.color }}><Icon name={fxw.icon} size={18} />{fxw.text} · hafta sonuna dek</span>}
+        {Number(d.gold) > 0 && reward(undefined, d.gold)}</span>
+      break
+    }
+    case 'PET_BACK': {
+      const card = d.card ? cardOf(String(d.card)) : null
+      art = <span className="popin"><PetView look={petLook(Number(d.stage ?? 0))} scale={5} reaction="happy" reactionKey={1} /></span>
+      title = 'KEŞİFTEN DÖNDÜ'; color = '#b98aff'
+      sub = <span className="flex flex-col items-center gap-1"><span className="text-ink">{cur.from} {String(d.name)}'i karşıladı</span>
+        <span className="flex items-center gap-2">{reward(undefined, d.gold)}{card && <span className="flex items-center gap-1 text-[16px]"><Icon name={card.icon} size={18} />{card.name}</span>}</span></span>
+      action = <button className="pbtn pbtn-gold flex-1" onClick={toPets}><Icon name="pet" size={20} />Yuva</button>
       break
     }
     default:

@@ -1,6 +1,10 @@
 // Macera: sahnede kahraman ve haftanın canavarı; görevler tek dokunuşla yapılır.
 import { useRef, useState, type ReactNode } from 'react'
-import { completeQuest, setIzin, setSpecial, drinkPotion, useSkill, CAT_INFO, DAY_EVENTS, SKILLS, type Quest } from '../lib/game'
+import { completeQuest, setIzin, setSpecial, drinkPotion, useSkill, forkVote, petLetterSeen, CAT_INFO, DAY_EVENTS, SKILLS, type Quest, type Fork, type PetMail, type Pet } from '../lib/game'
+import { PetView } from '../game/Pet'
+import { petLook } from './PetSheet'
+import { FORK_FX, FORK_OPTIONS } from '../game/world'
+import { Tip } from './Moments'
 import { BossSprite, HeroSprite, Icon, SceneAmbient, SceneBg } from '../game/Sprite'
 import { PetMini } from './PetSheet'
 import { fx } from '../game/fx'
@@ -11,7 +15,13 @@ import { online } from './Games'
 import { PartnerSheet } from './PartnerSheet'
 
 export function Adventure() {
-  const { game, setGame, run, go, openPets } = useGame()
+  const { game, setGame, run, go, openPets, openMap, openBook, openGarden } = useGame()
+  const region = game.world?.region ?? 0
+  const homePets = (game.pets ?? []).filter(p => !p.away || new Date(p.away.endsAt).getTime() <= Date.now())
+  const mail = game.petMail ?? []
+  const fork = game.fork
+  const forkFx = fork?.result ? FORK_FX[fork.result === 'A' ? fork.option.a.fx : fork.option.b.fx] : null
+  const gardenWants = !!game.garden && ((game.garden.plants && !game.garden.waterMe) || game.garden.ready > 0)
   const hero = game.hero!
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [heroFx, setHeroFx] = useState('')
@@ -116,25 +126,36 @@ export function Adventure() {
     <div className="space-y-3">
       {/* Sahne */}
       <section id="quest-scene" className="panel overflow-hidden relative h-[210px]" aria-label="Macera sahnesi">
-        <SceneBg className="absolute inset-0" seed={hero.level} />
-        <SceneAmbient />
+        <SceneBg className="absolute inset-0" seed={hero.level} region={region} />
+        <SceneAmbient region={region} />
         {izin && <div className="absolute inset-0 bg-[#3a6ad0]/25" />}
         <div className="absolute top-2 left-2 flex gap-1.5">
           <div className="panel-dark flex items-center gap-1 px-2 py-1 font-pixel text-[17px]" title="Seri">
             <Icon name="flame" size={18} />{hero.streak}
           </div>
           {izin && <div className="panel-dark flex items-center gap-1 px-2 py-1 font-pixel text-[15px] text-xp"><Icon name="shield" size={16} />İzin</div>}
+          <button className="panel-dark grid place-items-center w-[34px] h-[32px]" onClick={() => { sfx.open(); openMap() }} aria-label="Harita"><Icon name="map" size={22} /></button>
+          <button className="panel-dark grid place-items-center w-[34px] h-[32px]" onClick={() => { sfx.open(); openBook() }} aria-label="Defter"><Icon name="book" size={22} /></button>
+          {game.garden && (game.garden.plants || gardenWants) && (
+            <button className="panel-dark grid place-items-center w-[34px] h-[32px] relative" onClick={() => { sfx.open(); openGarden() }} aria-label="Bahçe">
+              <Icon name={game.garden.ready > 0 ? 'flower' : 'can'} size={22} />
+              {gardenWants && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-hp border-2 border-edge blinkdot" />}
+            </button>
+          )}
         </div>
+        {forkFx && <div className="absolute top-11 left-2 panel-dark px-1.5 py-0.5 font-pixel text-[13px] flex items-center gap-1" style={{ color: forkFx.color }} title="Bu haftanın yolu"><Icon name={forkFx.icon} size={13} />{forkFx.text}</div>}
         <div className="absolute top-2 right-2 panel-dark px-2 py-1"><Stars n={game.day?.difficulty ?? hero.difficulty} size={12} /></div>
         <div className={`absolute left-[8%] bottom-[10px] ${heroFx}`}>
           <HeroSprite cls={hero.class} look={hero.look} gear={hero.equipped} scale={3} pose={allDone ? 'joy' : hero.hp < hero.maxHp * 0.3 ? 'hurt' : undefined} />
         </div>
-        {(game.pets ?? []).slice(0, 2).map((p, i) => (
+        {homePets.slice(0, 2).map((p, i) => (
           <button key={p.id} className="absolute z-10" style={{ left: i === 0 ? '55%' : '45%', bottom: i === 0 ? 8 : 2 }} onClick={() => { sfx.open(); openPets() }} aria-label={p.name}>
-            {!p.patMe && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bob"><Icon name="heart" size={14} /></span>}
+            {p.away ? <span className="absolute -top-4 left-1/2 -translate-x-1/2 bob panel-dark !p-0.5"><Icon name="bag" size={16} /></span>
+              : !p.patMe && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bob"><Icon name="heart" size={14} /></span>}
             <PetMini pet={p} scale={2.1} />
           </button>
         ))}
+        {mail.length > 0 && <MailDelivery mail={mail[0]} count={mail.length} pets={game.pets ?? []} partnerName={partner?.name ?? ''} onSeen={() => setGame({ ...game, petMail: mail.slice(1) })} />}
         {(game.pets ?? []).length === 0 && game.play.petAdopt && (
           <button className="absolute z-10 left-[56%] bottom-[12px]" onClick={() => { sfx.open(); openPets() }} aria-label="Yeni dost"><Icon name="egg" size={34} className="egg-wobble" /></button>
         )}
@@ -191,6 +212,10 @@ export function Adventure() {
           <Icon name="shield" size={26} />
         </button>
       </div>
+
+      <Tip id="adventure-v4" icon="map" text="Haritaya, deftere ve bahçeye sahnedeki simgelerden ulaşırsın." />
+
+      {fork && !fork.result && game.partner && <ForkCard fork={fork} partnerName={game.partner.name} onVote={c => void run(() => forkVote(c)).then(g => { if (g) { sfx.good(); if (!g.fork?.result) fx.sparkle(window.innerWidth / 2, window.innerHeight * 0.4, 8, '#b98aff', 50) } })} />}
 
       {game.special.on && (
         <div className="panel p-2 flex items-center gap-3 dropin !border-xp" aria-label="Özel gün modu">
@@ -253,6 +278,62 @@ export function Adventure() {
         </>
       )}
     </div>
+  )
+}
+
+/** Haftanın yol ayrımı: iki yol, ikiniz ayrı oy verirsiniz */
+function ForkCard({ fork, partnerName, onVote }: { fork: Fork; partnerName: string; onVote: (c: 'A' | 'B') => void }) {
+  const opt = (c: 'A' | 'B') => { const o = c === 'A' ? fork.option.a : fork.option.b; return { ...(FORK_OPTIONS[o.key] ?? { name: o.key, icon: 'star' }), fx: FORK_FX[o.fx] } }
+  return (
+    <section className="panel p-2.5 space-y-2 dropin !border-[#7a5ad0]" aria-label="Yol ayrımı" style={{ background: 'linear-gradient(#2a2146, #231a3e)' }}>
+      <div className="flex items-center gap-2 font-pixel text-lg"><Icon name="dice" size={22} />Yol ayrımı
+        <span className="ml-auto font-pixel text-[13px] text-ink2 flex items-center gap-1">{fork.partnerVoted ? <><Icon name="check" size={13} />{partnerName} seçti</> : <>{partnerName} düşünüyor…</>}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {(['A', 'B'] as const).map(c => {
+          const o = opt(c), mine = fork.mine === c
+          return (
+            <button key={c} className={`panel-dark p-2 flex flex-col items-center gap-1 ${mine ? '!border-gold !bg-panel2' : ''} ${fork.mine && !mine ? 'opacity-45' : ''}`} disabled={!!fork.mine} onClick={() => { sfx.click(); onVote(c) }}>
+              <Icon name={o.icon} size={36} className={mine ? 'glow' : ''} />
+              <span className="font-pixel text-lg leading-none">{o.name}</span>
+              {o.fx && <span className="font-pixel text-[13px] flex items-center gap-0.5" style={{ color: o.fx.color }}><Icon name={o.fx.icon} size={12} />{o.fx.text}</span>}
+            </button>
+          )
+        })}
+      </div>
+      <div className="font-pixel text-[13px] text-ink2 text-center">{fork.mine ? 'Seçimin gizli · aynıysa +25 altın, farklıysa zar' : 'Aynı yolu seçerseniz ikinize +25 altın'}</div>
+    </section>
+  )
+}
+
+/** Elçi: eşin gönderdiği dost sahneye yürüyerek gelir, zarfı bırakır */
+function MailDelivery({ mail, count, pets, partnerName, onSeen }: { mail: PetMail; count: number; pets: Pet[]; partnerName: string; onSeen: () => void }) {
+  const pet = pets.find(p => p.id === mail.pet) ?? pets[0]
+  const [open, setOpen] = useState(false)
+  const read = () => {
+    void petLetterSeen(mail.id).catch(() => { /* bir dahaki sefere */ })
+    setOpen(false); onSeen()
+  }
+  return (
+    <>
+      <button key={mail.id} className="absolute right-[24%] bottom-[6px] z-20 walkin" onClick={() => { sfx.open(); setOpen(true); if (mail.kind === 'HEART') { fx.confetti(30); navigator.vibrate?.([20, 30, 20]) } }} aria-label={`${partnerName}'den mektup`}>
+        <span className="absolute -top-6 left-1/2 -translate-x-1/2 envelope flex items-center"><Icon name={mail.kind === 'HEART' ? 'heart' : 'scroll'} size={20} />{count > 1 && <span className="font-pixel text-[12px] text-gold">×{count}</span>}</span>
+        {pet ? <PetView look={petLook(pet)} scale={2.1} reaction="happy" reactionKey={1} /> : <Icon name="scroll" size={30} />}
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[55] bg-black/70 flex items-center justify-center p-6" role="dialog" aria-modal="true" onClick={read}>
+          <div className="panel w-full max-w-[360px] p-5 text-center space-y-3 dropin" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center items-end gap-3">
+              {pet && <PetView look={petLook(pet)} scale={3.6} reaction="pat" reactionKey={1} />}
+              <Icon name={mail.kind === 'HEART' ? 'heart' : 'scroll'} size={56} className="glow bob" />
+            </div>
+            <div className="font-pixel text-[15px] text-ink2">{pet?.name ?? 'Dostunuz'}, {partnerName}'den getirdi</div>
+            {mail.kind === 'NOTE' ? <p className="font-pixel text-2xl leading-snug">“{mail.text}”</p> : <p className="font-pixel text-3xl text-[#ff8ab5]">♥ ♥ ♥</p>}
+            <button className="pbtn pbtn-gold w-full" onClick={read} autoFocus>{count > 1 ? `Sonraki (${count - 1})` : 'Teşekkürler!'}</button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 

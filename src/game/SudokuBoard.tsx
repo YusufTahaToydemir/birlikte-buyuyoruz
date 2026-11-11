@@ -1,6 +1,6 @@
 // Sudoku tahtası + rakam tuşları (düello ve ortak oyun aynı bileşeni kullanır) ve düello oyunu.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { box, col, DUEL_GIVENS, makeSudoku, row } from './sudoku'
+import { box, col, DUEL_RATING, makeRated, row } from './sudoku'
 import { Icon } from './Sprite'
 import { fx } from './fx'
 import { sfx } from './sfx'
@@ -88,10 +88,11 @@ export function useNotes(storeKey?: string) {
   return { notes, toggle, placed, clear }
 }
 
-/** Düello: 15 dk; çözünce 1000 − sn/2 − 30×hata (en az 400), çözemezsen doğru hücre × 6; 5 hata oyunu bitirir */
-const SUDOKU_MS = 15 * 60 * 1000
+/** Düello: 20 dk, derece 2 bulmaca; çözünce 1000 − sn/3 − 30×hata (en az 400), çözemezsen doğru hücre × 6; 5 hata oyunu bitirir */
+const SUDOKU_MS = 20 * 60 * 1000
 export function SudokuDuel({ seed, onEnd }: { seed: number; onEnd: (score: number) => void }) {
-  const s = useMemo(() => makeSudoku(seed, DUEL_GIVENS), [seed])
+  const s = useMemo(() => makeRated(seed, DUEL_RATING), [seed])
+  const empty = useMemo(() => [...s.puzzle].filter(c => c === '0').length, [s])
   const [board, setBoard] = useState(s.puzzle)
   const [sel, setSel] = useState<number | null>(null)
   const [miss, setMiss] = useState(0)
@@ -110,7 +111,7 @@ export function SudokuDuel({ seed, onEnd }: { seed: number; onEnd: (score: numbe
     setEnded(true)
     const secs = Math.floor((Date.now() - start) / 1000)
     const mine = [...b].filter((c, i) => c !== '0' && s.puzzle[i] === '0').length
-    const score = solved ? Math.max(400, 1000 - Math.floor(secs / 2) - 30 * mistakes) : mine * 6
+    const score = solved ? Math.max(400, 1000 - Math.floor(secs / 3) - 30 * mistakes) : mine * 6
     if (solved) { sfx.victory(); fx.confetti(70) } else sfx.timeUp()
     window.setTimeout(() => onEnd(score), solved ? 1000 : 400)
   }, [onEnd, s.puzzle, start])
@@ -134,7 +135,7 @@ export function SudokuDuel({ seed, onEnd }: { seed: number; onEnd: (score: numbe
   return (
     <div className="space-y-2.5">
       <div className="panel-dark flex items-center justify-between px-3 py-2 font-pixel">
-        <span className="text-xl flex items-center gap-2"><Icon name="grid" size={22} />{filled}/{81 - DUEL_GIVENS}</span>
+        <span className="text-xl flex items-center gap-2"><Icon name="grid" size={22} />{filled}/{empty}</span>
         <span className="flex gap-0.5" aria-label={`${miss}/5 hata`}>{Array.from({ length: 5 }, (_, i) => <Icon key={i} name="heart" size={16} className={i < 5 - miss ? '' : 'opacity-25 grayscale'} />)}</span>
         <span className={`text-lg ${left < 60000 ? 'text-hp' : 'text-ink2'}`}>{Math.floor(left / 60000)}:{String(Math.floor(left / 1000) % 60).padStart(2, '0')}</span>
       </div>

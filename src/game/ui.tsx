@@ -91,6 +91,10 @@ export interface GameCtx {
   openSettings: () => void
   /** Ortak evcil dostların yuvasını açar */
   openPets: () => void
+  /** Keşif paketi: harita, defter, bahçe */
+  openMap: () => void
+  openBook: () => void
+  openGarden: () => void
 }
 export type TabId = 'quest' | 'arena' | 'games' | 'hero' | 'loot'
 export const GameContext = createContext<GameCtx | null>(null)

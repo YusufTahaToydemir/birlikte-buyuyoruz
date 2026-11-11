@@ -11,6 +11,7 @@ import { Sheet, toastError, useGame } from '../game/ui'
 import { NotesCard, QuizCard, RaidCard } from './Together'
 import { SudokuDuel } from '../game/SudokuBoard'
 import { SudokuCard } from './Sudoku'
+import { Tip } from './Moments'
 
 /** Yapboz resmi: manzara + haftanın canavarı (96x96) */
 function puzzleImage(bossKey: string, seed: number) {
@@ -54,6 +55,7 @@ export function Games() {
 
   return (
     <div className="space-y-3">
+      <Tip id="games-v4" icon="gamepad" text="Düellolar aynı bulmacayla oynanır; yüksek puan kazanır." />
       {/* Skor tablosu */}
       <section className="panel relative overflow-hidden p-3" style={{ background: 'linear-gradient(135deg, #2b1d4e, #3a1f3a)' }}>
         <div className="absolute inset-[-60%] rays opacity-20 pointer-events-none" />

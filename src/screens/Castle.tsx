@@ -15,7 +15,7 @@ export function CastleView({ parts, className = '' }: { parts: Record<string, nu
 }
 
 export function CastlePanel() {
-  const { game, setGame } = useGame()
+  const { game, setGame, openGarden } = useGame()
   const me = game.hero!, partner = game.partner
   const [castle, setCastle] = useState<CastleState | null>(null)
   const [open, setOpen] = useState(false)
@@ -48,7 +48,11 @@ export function CastlePanel() {
       </div>
       <div className="panel-dark overflow-hidden"><CastleView parts={castle.parts} /></div>
       {next && <div className="bar w-full" style={{ height: 8 }}><i style={{ width: `${Math.min(100, (total / next[0]) * 100)}%`, background: '#ffcc3a' }} /></div>}
-      <button className="pbtn pbtn-gold w-full" onClick={() => { sfx.open(); setOpen(true) }}><Icon name="bag" size={22} />İnşa et</button>
+      <div className="grid grid-cols-2 gap-2">
+        <button className="pbtn pbtn-gold" onClick={() => { sfx.open(); setOpen(true) }}><Icon name="bag" size={22} />İnşa et</button>
+        <button className="pbtn pbtn-green relative" onClick={() => { sfx.open(); openGarden() }}><Icon name="flower" size={22} />Bahçe
+          {game.garden && ((game.garden.plants && !game.garden.waterMe) || game.garden.ready > 0) && <span className="absolute top-1 right-1.5 w-2.5 h-2.5 rounded-full bg-hp border-2 border-edge blinkdot" />}</button>
+      </div>
       {castle.log.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {castle.log.slice(0, 4).map(l => {

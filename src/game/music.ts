@@ -11,6 +11,22 @@ const TRACKS: Record<TrackName, Track> = {
   battle: { bpm: 140, root: 57, minor: true, prog: [0, 5, 2, 6], seed: 23, drums: 'battle', bassOct: true },
   arcade: { bpm: 148, root: 67, minor: false, prog: [0, 3, 5, 4], seed: 5, drums: 'arcade', arp16: true, bassOct: true },
 }
+/** Haritadaki bölgeye göre köy müziği (0 = Yeşil Vadi, yukarıdaki 'town') */
+const REGION_TOWN: Track[] = [
+  TRACKS.town,
+  { bpm: 92, root: 62, minor: true, prog: [0, 5, 3, 4, 0, 5, 6, 4], seed: 31, drums: 'soft', swing: 0.06 },
+  { bpm: 78, root: 57, minor: true, prog: [0, 3, 5, 4], seed: 41, drums: 'soft' },
+  { bpm: 96, root: 64, minor: true, prog: [0, 6, 5, 4, 0, 6, 3, 4], seed: 53, drums: 'soft', swing: 0.1 },
+  { bpm: 86, root: 69, minor: false, prog: [0, 3, 4, 0, 5, 3, 4, 4], seed: 61, drums: 'soft' },
+  { bpm: 120, root: 55, minor: true, prog: [0, 6, 5, 6], seed: 71, drums: 'battle', bassOct: true },
+  { bpm: 82, root: 63, minor: true, prog: [0, 5, 2, 3], seed: 83, drums: 'soft', arp16: true },
+  { bpm: 104, root: 72, minor: false, prog: [0, 4, 5, 3, 0, 4, 3, 4], seed: 97, drums: 'soft', arp16: true },
+  { bpm: 72, root: 60, minor: false, prog: [0, 5, 3, 4, 5, 3, 4, 0], seed: 101, drums: 'soft', arp16: true },
+]
+type Ambient = 'birds' | 'forest' | 'frogs' | 'wind' | 'snow' | 'fire' | 'drips' | 'sky' | 'stars'
+const AMBIENT: Ambient[] = ['birds', 'forest', 'frogs', 'wind', 'snow', 'fire', 'drips', 'sky', 'stars']
+let region = 0
+
 const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10]
 const RHYTHMS = ['x.x.x.x.', 'x..xx.x.', 'xxx.x...', 'x.xxx.x.', 'x...x.xx', 'xx.xx.x.', 'x.x.xx..', 'x..x..x.']
 
@@ -102,6 +118,34 @@ function drum(a: AudioContext, kind: 'kick' | 'snare' | 'hat', t: number, vol: n
   src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.02)
 }
 
+/** Ortam sesleri: kuş, baykuş, kurbağa, rüzgâr, kor, damla, çan, yıldız ışıltısı */
+function ambient(a: AudioContext, kind: Ambient, t: number, out: AudioNode) {
+  const R = Math.random
+  const chirp = (f0: number, f1: number, at: number, dur: number, vol: number, type: OscillatorType = 'sine') => {
+    const o = a.createOscillator(), g = a.createGain(); o.type = type
+    o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f1, at + dur)
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, at + dur)
+    o.connect(g); g.connect(out); o.start(at); o.stop(at + dur + 0.02)
+  }
+  const whoosh = (at: number, dur: number, vol: number, freq: number) => {
+    const src = a.createBufferSource(); src.buffer = noiseBuffer(a)
+    const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(freq, at); f.frequency.linearRampToValueAtTime(freq * 1.6, at + dur); f.Q.value = 1.2
+    const g = a.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + dur * 0.45); g.gain.linearRampToValueAtTime(0.0001, at + dur)
+    src.connect(f); f.connect(g); g.connect(out); src.start(at, R() * 0.4); src.stop(at + dur + 0.05)
+  }
+  switch (kind) {
+    case 'birds': { const f = 2400 + R() * 1400; for (let i = 0; i < 2 + Math.floor(R() * 3); i++) chirp(f, f * (1.2 + R() * 0.4), t + i * 0.09, 0.07, 0.025) } break
+    case 'forest': if (R() < 0.5) { chirp(420, 380, t, 0.28, 0.035); chirp(400, 360, t + 0.4, 0.4, 0.03) } else chirp(3200, 4200, t, 0.05, 0.02); break
+    case 'frogs': for (let i = 0; i < 2 + Math.floor(R() * 3); i++) chirp(150 + R() * 40, 110, t + i * 0.12, 0.08, 0.04, 'square'); break
+    case 'wind': whoosh(t, 2.4, 0.035, 500); break
+    case 'snow': whoosh(t, 2.8, 0.03, 900); if (R() < 0.4) chirp(2637, 2600, t + 0.6, 1.2, 0.015); break
+    case 'fire': for (let i = 0; i < 4; i++) whoosh(t + R() * 0.8, 0.05, 0.05, 2500 + R() * 2000); chirp(60, 40, t, 1.2, 0.04, 'triangle'); break
+    case 'drips': { const f = 1100 + R() * 700; chirp(f, f * 0.5, t, 0.12, 0.04); chirp(f * 0.9, f * 0.45, t + 0.35 + R() * 0.3, 0.1, 0.025) } break
+    case 'sky': whoosh(t, 2, 0.02, 1200); chirp(1568, 1560, t + 0.3, 1.4, 0.016); chirp(2093, 2090, t + 0.6, 1.2, 0.012); break
+    case 'stars': for (let i = 0; i < 3; i++) chirp(2600 + R() * 1800, 2600 + R() * 1800, t + i * 0.18, 0.5, 0.012); break
+  }
+}
+
 function schedule() {
   const a = audio(); if (!a || !bus || !song) return
   const t = song.track
@@ -122,6 +166,8 @@ function schedule() {
     // arpej
     const chord = [root, root + 2, root + 4, root + 7].map(d => t.root + 12 * Math.floor(d / 7) + scale[((d % 7) + 7) % 7])
     if (t.arp16 || inBar % 2 === 0) note(a, pulse12!, chord[(t.arp16 ? inBar : inBar / 2) % 4] + 12, time, s16 * 0.9, t.drums === 'soft' ? 0.022 : 0.03, bus)
+    // ortam sesi (köy müziğinde, bölgeye göre; her 2 ölçüde bir şans)
+    if (current === 'town' && inBar === 4 && bar % 2 === 1 && Math.random() < 0.7) ambient(a, AMBIENT[region] ?? 'birds', time, bus)
     // davul
     if (t.drums === 'soft') {
       if (inBar === 0 || inBar === 10) drum(a, 'kick', time, 0.12, bus)
@@ -150,7 +196,7 @@ function start(name: TrackName) {
       bus.gain.linearRampToValueAtTime(VOL, now + sec + 0.8)
     })
   }
-  const t = TRACKS[name]
+  const t = name === 'town' ? REGION_TOWN[region] ?? TRACKS.town : TRACKS[name]
   song = { lead: compose(t), track: t }
   step = 0; nextTime = a.currentTime + 0.12
   const now = a.currentTime
@@ -184,6 +230,15 @@ export const music = {
     whenUnlocked(() => { if (current === name && enabled && !document.hidden) { if (timer !== null && bus) { halt(0.35); window.setTimeout(() => current === name && start(name), 380) } else start(name) } })
   },
   stop() { current = null; halt() },
+  /** Haritadaki bölge değişince köy müziği ve ortam sesi değişir */
+  setRegion(n: number) {
+    const next = Math.max(0, Math.min(REGION_TOWN.length - 1, n | 0))
+    if (next === region) return
+    region = next
+    if (current === 'town' && timer !== null && enabled) { halt(0.35); window.setTimeout(() => current === 'town' && start('town'), 380) }
+  },
+  /** Bir bölgenin ortam sesini hemen çalar (harita önizlemesi) */
+  preview(n: number) { const a = audio(); const out = audioOut(); if (a && out && enabled) ambient(a, AMBIENT[n] ?? 'birds', a.currentTime + 0.05, out) },
   isEnabled: () => enabled,
   setEnabled(on: boolean) {
     enabled = on

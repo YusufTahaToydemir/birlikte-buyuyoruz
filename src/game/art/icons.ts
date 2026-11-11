@@ -977,6 +977,38 @@ const ICONS: Record<string, IconDef> = {
       '............',
     ],
   },
+  map: {
+    pal: { P: '#f0dcae', p: '#c8a878', G: '#5bd17c', B: '#4c9df0', R: '#ff4d6d', d: '#8a6a40' }, lines: [
+      '............',
+      '.PPPpPPPpPP.',
+      '.PGGpPBBpPP.',
+      '.PGGpBBBpRP.',
+      '.PPGpPBPpRP.',
+      '.PPPpPPPpPP.',
+      '.PdPpPdPpPP.',
+      '.PPdpdPPpdP.',
+      '.PPPpPPdpPP.',
+      '.PGPpPPPpGP.',
+      '.PPPpPPPpPP.',
+      '............',
+    ],
+  },
+  can: {
+    pal: { B: '#4c9df0', b: '#2f6ab0', W: '#9ad8ff' }, lines: [
+      '............',
+      '............',
+      '...bbbb.....',
+      '..b....b....',
+      '.BBBBBBB...W',
+      '.BWBBBBBB.W.',
+      '.BWBBBBBBB..',
+      '.BBBBBBB.B..',
+      '.BBBBBBB....',
+      '.bbbbbbb....',
+      '............',
+      '............',
+    ],
+  },
 }
 
 export type IconName = keyof typeof ICONS

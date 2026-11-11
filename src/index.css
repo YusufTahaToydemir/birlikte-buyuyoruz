@@ -223,5 +223,48 @@ canvas.px { object-fit: cover; }
 .pet-legend { animation: petlegend 2.2s ease-in-out infinite; }
 @keyframes petsquish { 0% { transform: scale(1, 1) } 30% { transform: scale(1.18, .82) } 60% { transform: scale(.92, 1.1) } 100% { transform: scale(1, 1) } }
 .pet-squish { animation: petsquish .45s steps(6); }
+/* Evcil dost kare şeridi: 0 açık, 1 kırpma, 2 mutlu, 3 kuyruk (Pet.tsx POS ile aynı) */
+.pet-sprite { background-repeat: no-repeat; background-size: 400% 100%; }
+.pet-origin { transform-origin: 50% 100%; }
+@keyframes petface {
+  0% { background-position: 0% 0 } 38% { background-position: 33.333% 0 } 40.5% { background-position: 0% 0 }
+  60% { background-position: 100% 0 } 64% { background-position: 0% 0 } 68% { background-position: 100% 0 } 72% { background-position: 0% 0 }
+  88% { background-position: 33.333% 0 } 90% { background-position: 0% 0 } 92% { background-position: 33.333% 0 } 94% { background-position: 0% 0 }
+  100% { background-position: 0% 0 }
+}
+.pet-face { animation: petface 6.5s step-end var(--pd, 0s) infinite; }
+@keyframes petjoy { 0%, 100% { background-position: 66.667% 0 } }
+.pet-joy { animation: petjoy 1.1s step-end; }
+.pet-face.pet-joy { animation: petface 6.5s step-end var(--pd, 0s) infinite, petjoy 1.1s step-end; }
+@keyframes petchew { 0% { background-position: 66.667% 0 } 20% { background-position: 0% 0 } 40% { background-position: 66.667% 0 } 60% { background-position: 0% 0 } 80% { background-position: 66.667% 0 } 100% { background-position: 0% 0 } }
+.pet-chew { animation: petchew 1s step-end; }
+.pet-face.pet-chew { animation: petface 6.5s step-end var(--pd, 0s) infinite, petchew 1s step-end; }
+/* nefes (iki kare ezilme) + arada küçük zıplama */
+@keyframes petbreathe {
+  0% { transform: none } 12% { transform: scale(1.04, .96) } 24% { transform: none } 36% { transform: scale(1.04, .96) } 48% { transform: none }
+  60% { transform: scale(1.04, .96) } 70% { transform: translateY(-7%) scale(.97, 1.03) } 76% { transform: scale(1.06, .94) } 80% { transform: none }
+  90% { transform: scale(1.04, .96) } 100% { transform: none }
+}
+.pet-breathe { animation: petbreathe 5.2s step-end var(--pd, 0s) infinite; }
+@keyframes petsleep { 0%, 100% { transform: scale(1, 1) } 50% { transform: scale(1.05, .95) } }
+.pet-sleep { animation: petsleep 3.2s steps(4) infinite; }
+@keyframes petz { 0% { opacity: 0; transform: translate(0, 0) scale(.6) } 25% { opacity: 1 } 100% { opacity: 0; transform: translate(60%, -140%) scale(1.15) } }
+.pet-z { color: #cfe0ff; text-shadow: 0 2px 0 #160f22; animation: petz 2.4s steps(6) infinite both; }
+/* tepkiler */
+@keyframes petpat { 0% { transform: none } 20% { transform: scale(1.18, .82) } 45% { transform: scale(.9, 1.1) } 65% { transform: scale(1.06, .94) } 100% { transform: none } }
+.pet-r-pat { animation: petpat .7s steps(7); }
+@keyframes pethappy {
+  0% { transform: none } 10% { transform: scale(1.14, .86) } 30% { transform: translateY(-26%) scale(.94, 1.08) } 45% { transform: scale(1.12, .88) }
+  60% { transform: translateY(-14%) scale(.97, 1.04) } 75% { transform: scale(1.06, .94) } 100% { transform: none }
+}
+.pet-r-happy { animation: pethappy 1s steps(10); }
+@keyframes peteat { 0%, 30%, 60%, 100% { transform: none } 15%, 45%, 75% { transform: translateY(3%) scale(1.06, .94) } }
+.pet-r-eat { animation: peteat 1s steps(10); }
+.pet-fx { position: absolute; opacity: 0; pointer-events: none; background-size: 100% 100%; animation: petfx 1.1s steps(8) forwards; }
+@keyframes petfx {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.4) }
+  20% { opacity: 1; transform: translate(calc(-50% + var(--dx) * .3), calc(-50% + var(--dy) * .3)) scale(1) }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.85) }
+}
 @keyframes eggwobble { 0%, 100% { transform: rotate(0) } 20% { transform: rotate(-10deg) } 40% { transform: rotate(10deg) } 60% { transform: rotate(-6deg) } 80% { transform: rotate(6deg) } }
 .egg-wobble { animation: eggwobble .6s steps(6) infinite; }

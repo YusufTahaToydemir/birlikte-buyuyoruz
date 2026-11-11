@@ -41,12 +41,49 @@ export interface Game {
   tickets: { available: number; requested: number; used: number }
   incomingRequests: number
   chains: Record<string, { chain: number; best: number }>
-  play: { duels: number; together: number; word: boolean; sudoku?: boolean; petAdopt?: boolean }
+  play: { duels: number; together: number; word: boolean; sudoku?: boolean; petAdopt?: boolean; capsule?: string | null; explore?: boolean; fork?: boolean }
   pets?: Pet[]
   petBonus?: number
+  world?: { progress: number; region: number; perRegion: number }
+  fork?: Fork | null
+  petMail?: PetMail[]
+  lettersToday?: number
+  yesterday?: { me: DaySummary | null; partner: DaySummary | null; combo: boolean }
+  garden?: { plants: boolean; ready: number; waterMe: boolean; waterPartner: boolean }
 }
+export interface DaySummary { done: number; total: number; allDone: boolean; izin: boolean; hpLost?: number }
+export interface Fork {
+  week: string; pair: number
+  option: { a: { key: string; fx: string }; b: { key: string; fx: string } }
+  mine: 'A' | 'B' | null; partnerVoted: boolean; partnerVote: 'A' | 'B' | null; result: 'A' | 'B' | null; agreed: boolean | null; decidedAt: string | null
+}
+export interface PetMail { id: string; pet: string | null; kind: 'HEART' | 'NOTE'; text: string | null; at: string }
+export interface Loot { gold: number; love: number; card: string | null; newCard: boolean; seed: string | null; story: number; region: number; pet: string; name: string; species: PetSpecies; color: string; outfit: Partial<Record<PetSlot, string>>; stage: number }
+export const forkVote = (choice: 'A' | 'B') => rpc<Game>('fork_vote', { p_choice: choice })
+export const petExplore = (pet: string, region: number) => rpc<PetsState>('pet_explore', { p_pet: pet, p_region: region })
+export const petExploreClaim = (id: string) => rpc<PetsState & { loot: Loot }>('pet_explore_claim', { p_id: id })
+export const petSendLetter = (pet: string, kind: 'HEART' | 'NOTE', text: string | null) => rpc<PetsState>('pet_send_letter', { p_pet: pet, p_kind: kind, p_text: text })
+export const petLetterSeen = (id: string) => rpc<{ ok: boolean }>('pet_letter_seen', { p_id: id })
+export interface GardenPlot { slot: number; seed: string; growth: number; need: number; ready: boolean; grewToday: boolean; plantedAt: string }
+export interface GardenState { slots: number; plots: GardenPlot[]; seeds: Record<string, number>; flowers: Record<string, number>; waterMe: boolean; waterPartner: boolean; harvest?: { seed: string; gold: number } }
+export const getGarden = () => rpc<GardenState>('get_garden')
+export const gardenBuySeed = (seed: string) => rpc<GardenState>('garden_buy_seed', { p_seed: seed })
+export const gardenPlant = (slot: number, seed: string) => rpc<GardenState>('garden_plant', { p_slot: slot, p_seed: seed })
+export const gardenWater = () => rpc<GardenState>('garden_water')
+export const gardenHarvest = (slot: number) => rpc<GardenState>('garden_harvest', { p_slot: slot })
+export interface Memory { id: string; key: string; kind: string; data: Record<string, unknown>; at: string }
+export interface Capsule { id: string; author: string | null; openAt: string; createdAt: string; open: boolean; read: boolean; text: string | null }
+export interface MemoriesState { memories: Memory[]; capsules: Capsule[] }
+export const getMemories = () => rpc<MemoriesState>('get_memories')
+export const capsuleWrite = (text: string, months: number) => rpc<MemoriesState>('capsule_write', { p_text: text, p_months: months })
+export const capsuleRead = (id: string) => rpc<MemoriesState>('capsule_read', { p_id: id })
+export interface Collection { cards: Record<string, number>; flowers: Record<string, number>; pets: Array<{ species: PetSpecies; color: string }>; wardrobe: string[]; bestiary: BestiaryEntry[]; region: number }
+export const getCollection = () => rpc<Collection>('get_collection')
+export interface WorldState { progress: number; region: number; perRegion: number; regions: number; defeated: Array<{ boss: string; name: string; at: string }>; cards: number }
+export const getWorld = () => rpc<WorldState>('get_world')
 /** Ortak evcil dost (çiftin) */
-export interface Pet { id: string; species: PetSpecies; color: string; name: string; love: number; stage: number; outfit: Partial<Record<PetSlot, string>>; createdAt: string; patMe: boolean; patPartner: boolean }
+export interface Pet { id: string; species: PetSpecies; color: string; name: string; love: number; stage: number; outfit: Partial<Record<PetSlot, string>>; createdAt: string; patMe: boolean; patPartner: boolean
+  away?: { id: string; region: number; endsAt: string; startedAt: string; by: string | null } | null; tripsToday?: number }
 export interface PetsState {
   pets: Pet[]; wardrobe: string[]
   pending: { id: string; species: PetSpecies; color: string; name: string; price: number; half: number; rest: number; startedBy: string; expiresAt: string } | null
@@ -68,6 +105,7 @@ export const LOVE_REASON: Record<string, { name: string; icon: string }> = {
   COMBO: { name: 'Kombo', icon: 'sparkle' }, TOGETHER: { name: 'Birlikte', icon: 'heart' }, WORD: { name: 'Kelime', icon: 'scroll' },
   NOTE: { name: 'Mektup', icon: 'quill' }, DUEL: { name: 'Düello', icon: 'swords' }, QUIZ: { name: 'Çift testi', icon: 'puzzle' },
   RAID: { name: 'Baskın', icon: 'skull' }, BOSS: { name: 'Canavar', icon: 'crown' }, SUDOKU: { name: 'Sudoku', icon: 'grid' },
+  EXPLORE: { name: 'Keşif', icon: 'bag' }, LETTER: { name: 'Elçi', icon: 'scroll' }, GARDEN: { name: 'Bahçe', icon: 'flower' },
 }
 
 // ---------- Ortak sudoku (sıra tabanlı) ----------
@@ -116,6 +154,9 @@ const ERROR_TEXT: Record<string, string> = {
   NO_PARTNER: 'Önce partnerini davet et.',
   NO_POTION: 'Can iksirin yok.',
   DAILY_LIMIT: 'Bugünlük hakkın bitti.',
+  REGION_LOCKED: 'Bu bölgenin sisi henüz açılmadı.',
+  PET_AWAY: 'Dostunuz şu an keşifte.',
+  NOT_READY: 'Henüz hazır değil.',
   INVALID_STATE: 'Bu işlem şu an yapılamaz.',
   REVERSAL_WINDOW_CLOSED: 'Geri alma süresi doldu.',
   COUPLE_FULL: 'Takım zaten dolu.',
